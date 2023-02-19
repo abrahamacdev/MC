@@ -4,10 +4,14 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ComponentEvent;
+import java.awt.event.ComponentListener;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.AbstractMap;
+import java.util.Arrays;
 import java.util.Random;
+import java.util.function.DoublePredicate;
 
 public class randomGenerator {
 
@@ -23,7 +27,10 @@ public class randomGenerator {
 
     private main.ALGORITMOS algoritmo = main.ALGORITMOS._26_1_a;
     private JPanel grafica = null;      // Gráfica con los puntos
-    private AbstractMap.SimpleEntry[] puntos;
+
+    private JTextArea salida = null;       // Salida de puntos generados
+
+    private double[] puntos = null;
 
     private int numeroPuntos = 1000;
 
@@ -100,6 +107,7 @@ public class randomGenerator {
     }
 
     public double generar(){
+
         switch (algoritmo){
 
             case _26_1_a: {
@@ -126,20 +134,14 @@ public class randomGenerator {
                 return generadorFishmanMoore();
             }
 
-            case RANDU: {
+            default: {
                 return generadorRandu();
             }
         }
-
-        return 0.0;
     }
 
-    AbstractMap.SimpleEntry<Integer, Integer> generarPunto(int ancho, int alto){
-
-        int x = (int) (generar() * ancho);
-        int y = (int) (generar() * alto);
-
-        return new AbstractMap.SimpleEntry<>(x, y);
+    AbstractMap.SimpleEntry<Double, Double> generarPunto(){
+        return new AbstractMap.SimpleEntry<>(generar(), generar());
     }
 
     public void estableceAlgoritmo (String s){
@@ -176,6 +178,9 @@ public class randomGenerator {
         }
     }
 
+    public void muestraPuntos(){
+        if (salida != null && puntos != null) salida.setText(Arrays.toString(puntos));
+    }
 
 
 
@@ -268,7 +273,7 @@ public class randomGenerator {
         // Listado de seleccion
         JSpinner spinnerCantidad = new JSpinner();
         spinnerCantidad.setPreferredSize(new Dimension(spinnerCantidad.getPreferredSize().width, 20));
-        spinnerCantidad.setValue(1000);    // Valor por defecto
+        spinnerCantidad.setValue(numeroPuntos);    // Valor por defecto
 
         // Nos suscribimos a cambios en el JSpinner
         spinnerCantidad.addChangeListener(changeEvent -> {
@@ -286,6 +291,15 @@ public class randomGenerator {
 
             // Establecemos el número de puntos
             numeroPuntos = (int) spinnerCantidad.getValue();
+
+            // Nada de cantidades impares, siempre pares
+            if (numeroPuntos % 2 == 1){
+                if (numeroPuntos == 1) spinnerCantidad.setValue(0);
+                else {
+                    numeroPuntos--;
+                    spinnerCantidad.setValue(numeroPuntos);
+                }
+            }
 
             // Repintamos la gráfica
             grafica.invalidate();
@@ -312,7 +326,7 @@ public class randomGenerator {
     public void panelLateralIzquierdo(JFrame frame) throws IOException {
 
         JPanel panelPadre = new JPanel();
-        panelPadre.setBackground(Color.ORANGE);
+        //panelPadre.setBackground(Color.ORANGE);
         panelPadre.setLayout(new GridBagLayout());
         panelPadre.setMinimumSize(new Dimension(600, 700));
         panelPadre.setPreferredSize(new Dimension(600, 700));
@@ -342,10 +356,12 @@ public class randomGenerator {
         // Añadimos el panel de la grafica
         panelPadre.add(panelGrafica, gbc);
 
-
         // Panel que contendrá todos los números
-        JPanel panelNumeros = new JPanel();
+        JPanel panelNumeros = new JPanel(new BorderLayout());
         panelNumeros.setBackground(Color.RED);
+
+        // Añadimos la salida de los numeros al panel
+        anadirSalida(panelNumeros);
 
         // Restricciones del panel de la grafica
         gbc.gridy = 1;
@@ -372,7 +388,7 @@ public class randomGenerator {
                 Graphics g = bufferedImage.getGraphics();
 
                 // Inicializamos el vector de puntos
-                puntos = new AbstractMap.SimpleEntry[numeroPuntos];
+                puntos = new double[numeroPuntos];
 
                 // Pintamos un marco blanco como fondo
                 g.setColor(Color.WHITE);
@@ -382,18 +398,48 @@ public class randomGenerator {
                 g.setColor(Color.BLUE);
 
                 // Generamos los puntos aleatorios
-                for(int i = 0; i<numeroPuntos; i++) {
-                    AbstractMap.SimpleEntry<Integer, Integer> punto = generarPunto(ancho, alto);
-                    puntos[i] = punto;
-                    g.fillOval(punto.getKey(), punto.getValue(), 3, 3);
+                int x, y;
+                for(int i = 0; i<numeroPuntos/2; i++) {
+                    AbstractMap.SimpleEntry<Double, Double> punto = generarPunto();
+
+                    int indx = i*2;
+                    puntos[indx] = punto.getKey();
+                    puntos[indx+1] = punto.getValue();
+
+                    x = (int) (punto.getKey() * ancho);
+                    y = (int) (punto.getValue() * alto);
+
+                    g.fillOval(x, y, 3, 3);
                 }
 
                 graphics.drawImage(bufferedImage, 0, 0, this);
+
+                muestraPuntos();
             }
         };
 
         // Actualizamos el tamañoe
         panelGrafica.add(grafica);
+    }
+
+    public void anadirSalida(JPanel panelSalida){
+
+        salida = new JTextArea();
+        salida.setLayout(new BorderLayout());
+        salida.setBorder(BorderFactory.createCompoundBorder(
+                salida.getBorder(),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        ));
+        salida.setEditable(false);
+        salida.setLineWrap(true);
+
+        JScrollPane areaScrollPane = new JScrollPane(salida);
+        areaScrollPane.setVerticalScrollBarPolicy(
+                JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+
+
+
+        panelSalida.add(areaScrollPane);
     }
 
     public void crearMenu(JFrame frame, ActionListener listener) {
