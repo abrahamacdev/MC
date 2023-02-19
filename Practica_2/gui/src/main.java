@@ -1,20 +1,33 @@
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.ComponentEvent;
-import java.awt.event.ComponentListener;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileSystems;
+import java.util.AbstractMap;
 import java.util.Random;
-import javax.imageio.ImageIO;
 import javax.swing.*;
+import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 
 public class main {
 
-    public static String RUTA_BASE = FileSystems.getDefault().getPath(".").toAbsolutePath().getParent().toString();
+    public enum ALGORITMOS {
+        _26_1_a,
+        _26_1_b,
+        _26_2,
+        _26_3,
+        _26_42,
+        FISHMAN_MOORE,
+        RANDU
+    };
+
+    private ALGORITMOS algoritmo = ALGORITMOS._26_1_a;
+    private JPanel grafica = null;      // Gráfica con los puntos
+    private AbstractMap.SimpleEntry[] puntos;
+
+    private int numeroPuntos = 1000;
+
 
     public static ActionListener buttonListener = new ActionListener() {
         @Override
@@ -46,7 +59,7 @@ public class main {
         }
     };
 
-    public static void crearVentana() throws IOException{
+    public void crearVentana() throws IOException{
 
         int anchoFrame = 900;
         int altoFrame = 700;
@@ -74,49 +87,66 @@ public class main {
         frame.setVisible(true);
     }
 
-    public static void panelLateralDerecho(JFrame frame) {
+    public void panelLateralDerecho(JFrame frame) {
 
-        JPanel panelBotones = new JPanel();
-        panelBotones.setBorder(new EmptyBorder(0, 40, 0, 40));
+        String[] opcionesListado = new String[]{"26.1a", "26.1b", "26.2", "26.3", "Combinado 26-42", "Fishman y Moore", "RANDU"};
+
+        JPanel panelOpciones = new JPanel();
+        panelOpciones.setBorder(new EmptyBorder(0, 40, 0, 40));
         //panelBotones.setBackground(Color.RED);
-        panelBotones.setMinimumSize(new Dimension(300, 700));
-        panelBotones.setPreferredSize(new Dimension(300, 700));
-        panelBotones.setMaximumSize(new Dimension(300, 700));
+        panelOpciones.setMinimumSize(new Dimension(350, 700));
+        panelOpciones.setPreferredSize(new Dimension(350, 700));
+        panelOpciones.setMaximumSize(new Dimension(350, 700));
 
         GridLayout gridBotones = new GridLayout(16, 3);
-        panelBotones.setLayout(gridBotones);
+        panelOpciones.setLayout(gridBotones);
 
-        JButton parametros = new JButton("Parámetros");
-        parametros.setName("Parámetros");
-        parametros.addActionListener(buttonListener);
+        // Etiqueta del listado
+        JLabel textoGenerador = new JLabel("Generador de numeros aleatorios:");
+        //textoGenerador.setName("Parámetros");
+        //textoGenerador.addActionListener(buttonListener);
 
-        JButton curva = new JButton("Curva");
-        curva.setName("Curva");
-        curva.addActionListener(buttonListener);
+        // Listado de seleccion
+        JComboBox<String> listadoGeneradores = new JComboBox<>(opcionesListado);
 
-        JButton computar = new JButton("Computar");
-        computar.setName("Computar");
-        computar.addActionListener(buttonListener);
+        // Etiqueta del selector de cantidad
+        JLabel textoCantidad = new JLabel("Numero de digitos aleatorios:");
+        textoCantidad.setBorder(new CompoundBorder(textoCantidad.getBorder(), new EmptyBorder(20, 0, 0, 0)));
+        //textoGenerador.setName("Parámetros");
+        //textoGenerador.addActionListener(buttonListener);
 
-        JButton detener = new JButton("Detener");
-        detener.setName("Detener");
-        detener.addActionListener(buttonListener);
+        // Listado de seleccion
+        JSpinner spinnerCantidad = new JSpinner();
+        spinnerCantidad.setPreferredSize(new Dimension(spinnerCantidad.getPreferredSize().width, 20));
+        spinnerCantidad.setValue(1000);    // Valor por defecto
 
+        // Nos suscribimos a cambios en el JSpinner
+        spinnerCantidad.addChangeListener(changeEvent -> {
+            // EVitamos que se puedan introducir números negativos
+            if ((int) spinnerCantidad.getValue() < 0){
+                spinnerCantidad.setValue(1000);
+            }
+        });
+
+        JButton botonGenerar = new JButton("Generar");
+
+        panelOpciones.add(new JLabel(""));
+        panelOpciones.add(textoGenerador);       // Label del listado
+        panelOpciones.add(listadoGeneradores);   // Listado
+        panelOpciones.add(textoCantidad);        // Label del spinner
+        panelOpciones.add(spinnerCantidad);      // Spinner
+        panelOpciones.add(new JLabel(""));
+        panelOpciones.add(botonGenerar);        // Boton generar
+        /*panelBotones.add(computar);
         panelBotones.add(new JLabel(""));
-        panelBotones.add(parametros);
         panelBotones.add(new JLabel(""));
-        panelBotones.add(curva);
-        panelBotones.add(new JLabel(""));
-        panelBotones.add(computar);
-        panelBotones.add(new JLabel(""));
-        panelBotones.add(new JLabel(""));
-        panelBotones.add(detener);
+        panelBotones.add(detener);*/
         //panelBotones.setBorder(new EmptyBorder(80, 80, 80, 80));
 
-        frame.add(panelBotones, BorderLayout.EAST);
+        frame.add(panelOpciones, BorderLayout.EAST);
     }
 
-    public static void panelLateralIzquierdo(JFrame frame) throws IOException {
+    public void panelLateralIzquierdo(JFrame frame) throws IOException {
 
         JPanel panelPadre = new JPanel();
         panelPadre.setBackground(Color.ORANGE);
@@ -166,9 +196,9 @@ public class main {
         frame.add(panelPadre, BorderLayout.CENTER);
     }
 
-    public static void anadirGrafica(JPanel panelGrafica){
+    public void anadirGrafica(JPanel panelGrafica){
 
-        JPanel grafica = new JPanel(){
+        grafica = new JPanel(){
 
             @Override
             public void paint(Graphics graphics) {
@@ -176,27 +206,36 @@ public class main {
                 Random r = new Random();
                 int ancho      = panelGrafica.getWidth();
                 int alto       = panelGrafica.getHeight();
-                int num_lineas = 10000;
                 BufferedImage bufferedImage = new BufferedImage(ancho,alto,BufferedImage.TYPE_INT_RGB);
                 Graphics g = bufferedImage.getGraphics();
-                int x, y;
 
-                for(int i = 0; i<num_lineas; i++) {
+                // Inicializamos el vector de puntos
+                puntos = new AbstractMap.SimpleEntry[numeroPuntos];
+
+                // Pintamos un marco blanco como fondo
+                g.setColor(Color.WHITE);
+                g.fillRect(0, 0, ancho, alto);
+
+                // Establecemos el color de los puntos
+                g.setColor(Color.BLUE);
+
+                // Generamos los puntos aleatorios
+                int x, y;
+                for(int i = 0; i<numeroPuntos; i++) {
                     x=r.nextInt(ancho);
                     y=r.nextInt(alto);
-                    g.drawOval(x, y, 1, 1);   // o tambien...
+                    g.fillOval(x, y, 3, 3);   // o tambien...
                 }
 
                 graphics.drawImage(bufferedImage, 0, 0, this);
             }
         };
 
-
         // Actualizamos el tamañoe
         panelGrafica.add(grafica);
     }
 
-    public static void crearMenu(JFrame frame, ActionListener listener) {
+    public void crearMenu(JFrame frame, ActionListener listener) {
 
         JMenu opA, opB, opC, opAcerca;
         JMenuItem subA, subB, subC, subAcerca;
@@ -237,7 +276,9 @@ public class main {
 
     public static void main(String[] args) throws Exception {
 
-        crearVentana();
+        main m = new main();
+
+        //m.crearVentana();
 
     }
 }
