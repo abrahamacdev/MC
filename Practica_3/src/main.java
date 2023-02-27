@@ -1,16 +1,16 @@
+import java.io.IOException;
+
 public class main {
 
-    public static void main(String[] args) throws InstantiationException {
+    public static void main(String[] args) throws InstantiationException, IOException {
 
         int k = 3;
         int codigo = 792;
-        int generaciones = 800;
+        int generaciones = 900;
 
         ca1DSim automata = new ca1DSim(k, codigo, generaciones);
 
-        while (!automata.haTerminado()){
-            automata.evoluciona();
-        }
-        System.out.println("Evolucionado. Actual " + automata.getNGeneracionActual());
+        gui gui = new gui();
+        gui.crearVentana();
     }
 }

@@ -9,7 +9,7 @@ public class ca1DSim {
 
     private int nGeneraciones = 800;        // Veces que evolucionarán las células (equivalente al alto de la pantalla)
 
-    private int nGeneracionActual = 1;      // Generación actual (veces que han evolucionado - 1)
+    private int nGeneracionActual = 0;      // Generación actual (veces que han evolucionado - 1)
 
     private int nCelulas = 500;             // Cantidad células en cada generación (Equivalente al ancho de la pantalla)
     private int[] generacionActual;         // Valores de las celulas para la generacion actual
@@ -70,7 +70,7 @@ public class ca1DSim {
         this.configuracionInicial = configuracionInicial;
 
         // Reseteamos variables
-        this.nGeneracionActual = 1;
+        this.nGeneracionActual = 0;
         this.generacionActual = new int[nCelulas];
 
         // Inicializamos las células
@@ -117,32 +117,35 @@ public class ca1DSim {
 
     public void evoluciona(){
 
-        int[] temp = new int[generacionActual.length];
+        // En el paso 0 no evolucionaremos (por conveniencia).
+        if (nGeneracionActual > 0){
+            int[] temp = new int[generacionActual.length];
 
-        for (int i=0; i<nCelulas; i++){
+            for (int i=0; i<nCelulas; i++){
 
-            int tempV;
+                int tempV;
 
-            // Célula 0 (depende de: n-1, 0 y 1)
-            if (i == 0){
-                tempV = generacionActual[nCelulas-1] + generacionActual[0] + generacionActual[1];
+                // Célula 0 (depende de: n-1, 0 y 1)
+                if (i == 0){
+                    tempV = generacionActual[nCelulas-1] + generacionActual[0] + generacionActual[1];
+                }
+                // Célula n-1 (depende de: n-2, n-1, 0)
+                else if(i == nCelulas-1){
+                    tempV = generacionActual[nCelulas-2] + generacionActual[nCelulas-1] + generacionActual[0];
+                }
+
+                // Célula i (depende de: i-1, i, i+1)
+                else {
+                    tempV = generacionActual[i-1] + generacionActual[i] + generacionActual[i+1];
+                }
+
+                // Obtenemos el valor correspondiente
+                temp[i] = tablaColores[tempV];
             }
-            // Célula n-1 (depende de: n-2, n-1, 0)
-            else if(i == nCelulas-1){
-                tempV = generacionActual[nCelulas-2] + generacionActual[nCelulas-1] + generacionActual[0];
-            }
 
-            // Célula i (depende de: i-1, i, i+1)
-            else {
-                tempV = generacionActual[i-1] + generacionActual[i] + generacionActual[i+1];
-            }
-
-            // Obtenemos el valor correspondiente
-            temp[i] = tablaColores[tempV];
+            // Guardamos la generación nueva
+            generacionActual = temp;
         }
-
-        // Guardamos la generación nueva
-        generacionActual = temp;
 
         // Guardamos la evolución
         nGeneracionActual++;
@@ -156,5 +159,17 @@ public class ca1DSim {
 
     public void reset() throws InstantiationException {
         inicializarAutomata((int) k, codigoEnBase10, nGeneraciones, configuracionInicial);
+    }
+
+    public int getnGeneraciones() {
+        return nGeneraciones;
+    }
+
+    public double getK(){
+        return k;
+    }
+
+    public int getnCelulas() {
+        return nCelulas;
     }
 }
