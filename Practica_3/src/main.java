@@ -10,7 +10,7 @@ public class main {
 
         ca1DSim automata = new ca1DSim(k, codigo, generaciones);
 
-        gui gui = new gui();
-        gui.crearVentana();
+        ca1DSimGUI ca1DSimGUI = new ca1DSimGUI();
+        ca1DSimGUI.crearVentana();
     }
 }

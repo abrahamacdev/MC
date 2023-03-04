@@ -9,7 +9,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.Objects;
 
-public class gui {
+public class ca1DSimGUI {
 
     private JPanel padreGrafica;
     private JPanel grafica;
@@ -60,8 +60,8 @@ public class gui {
 
     public void crearVentana() throws IOException {
 
-        int anchoFrame = 900;
-        int altoFrame = 700;
+        int anchoFrame = 1000;
+        int altoFrame = 850;
 
         principal = new JFrame("GUI");
 
@@ -129,8 +129,8 @@ public class gui {
         // Nos suscribimos a cambios en el JSpinner
         ChangeListener spinnersListeners = changeEvent -> {
             // Evitamos que se puedan introducir números negativos
-            if ((int) spinnerRegla.getValue() < 0){
-                spinnerRegla.setValue(0);
+            if ((int) spinnerRegla.getValue() < 1){
+                spinnerRegla.setValue(1);
             }
         };
 
@@ -291,6 +291,10 @@ public class gui {
         }catch (Exception e){
             JOptionPane.showMessageDialog(principal, "Ocurrio un error al ejecutar la simulacion:\n'" + e.getMessage() + "'", "Error", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    public static void main(String[] args) throws IOException {
+        new ca1DSimGUI().crearVentana();
     }
 
     /*private void crearMenu(JFrame frame, ActionListener listener) {

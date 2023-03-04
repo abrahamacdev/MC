@@ -11,7 +11,7 @@ public class ca1DSim {
 
     private int nGeneracionActual = 0;      // Generación actual (veces que han evolucionado - 1)
 
-    private int nCelulas = 500;             // Cantidad células en cada generación (Equivalente al ancho de la pantalla)
+    private int nCelulas = 600;             // Cantidad células en cada generación (Equivalente al ancho de la pantalla)
     private int[] generacionActual;         // Valores de las celulas para la generacion actual
 
 
