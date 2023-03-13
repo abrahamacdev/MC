@@ -1,9 +1,11 @@
+import javax.sound.midi.Soundbank;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 public class ca1DSim {
 
     private double k;                       // Estados por célula: 2,3,4,5 (nº de valores que podrán tener en cada tiempo t las células)
-    private int r = 1;                // Vecinos
+    private int r = 1;                      // Vecinos
 
     private int codigoEnBase10 = 100;       // Codigo a usar para los colores en base 10
     private String codigoEnBaseK;           // Codigo a usar para los colores en base k
@@ -15,27 +17,41 @@ public class ca1DSim {
 
     private int nCelulas = 600;             // Cantidad células en cada generación (Equivalente al ancho de la pantalla)
     private int[] generacionActual;         // Valores de las celulas para la generacion actual
+    private ArrayList<int[]> historialGeneraciones;
 
+
+    private boolean calcularHamming;
     private int[] hamming;                  // Curva distancia Hamming
-    private int[] entropiaEspacial;         // Curva entropía espacial
+
+    private boolean calcularEntropiaEspacial;
+    private double[] entropiaEspacial;         // Curva entropía espacial
     private int[] valoresCelulaObservada;   // Valores de la celula observada en cada paso
+
+    private boolean calcularEntropiaTemporalCelula;
     private double entropiaCelulaObservada; // Valor final de la entropía de la célula observada
     private int celulaObservada;            // Indice de la célula observada
 
-    private CONFIGURACION_INICIAL configuracionInicial; // Forma de inicializar el autómata
+    private CONFIGURACION_INICIALIZACION_AUTOMATA configuracionInicial; // Forma de inicializar el autómata
 
-    public enum CONFIGURACION_INICIAL {
+    public enum CONFIGURACION_INICIALIZACION_AUTOMATA {
         ALEATORIA,
         CELULA_CENTRAL_ACTIVA
     }
+
+    public enum CONFIGURACION_CONDICION_FRONTERA {
+        NULA,
+        CILINDRICA
+    }
+
 
 
     // Necesario para el generador aleatorio
     private long xGenerador_Randu = 1;
 
 
-    public ca1DSim(int k, int r, int codigo, int generaciones, CONFIGURACION_INICIAL configuracionInicial) throws InstantiationException {
-        inicializarAutomata(k, r, codigo, generaciones, configuracionInicial);
+    public ca1DSim(int k, int r, int codigo, CONFIGURACION_INICIALIZACION_AUTOMATA configuracionInicial, CONFIGURACION_CONDICION_FRONTERA condicionFrontera, int numGeneraciones,
+                   int numCelulas, boolean calcularHamming, boolean calcularEntropiaEspacial, boolean calcularEntropiaTemporalCelula, int indxCelula) throws InstantiationException {
+        inicializarAutomata(k, r, codigo, configuracionInicial, condicionFrontera, numGeneraciones, numCelulas, calcularHamming, calcularEntropiaEspacial, calcularEntropiaTemporalCelula, indxCelula);
     }
 
     private double generadorRandu(){
@@ -43,30 +59,41 @@ public class ca1DSim {
         return xGenerador_Randu / Math.pow(2, 31);
     }
 
-    private void inicializarAutomata(int k, int r, int codigo, int generaciones, CONFIGURACION_INICIAL configuracionInicial) throws InstantiationException {
+    private void inicializarAutomata(int k, int r, int regla, CONFIGURACION_INICIALIZACION_AUTOMATA configuracionInicial, CONFIGURACION_CONDICION_FRONTERA condicionFrontera, int numGeneraciones,
+                                     int numCelulas, boolean calcularHamming, boolean calcularEntropiaEspacial, boolean calcularEntropiaTemporalCelula, int indxCelula) throws InstantiationException {
 
         // 2 <= k <= 5
         if (k < 2 || k > 5) throw new InstantiationException("Valor no válido para k (2-5)");
 
         // generaciones >= 1
-        if (generaciones < 1) throw new InstantiationException("Valor no válido de generaciones (> 0)");
+        if (numGeneraciones < 1) throw new InstantiationException("Valor no válido de generaciones (> 0)");
 
-        // codigo >= 0
-        if (codigo < 0) throw new InstantiationException("Código no válido (>=0)");
+        // codigo/regla >= 0
+        if (r < 0) throw new InstantiationException("Código/Regla no válido (>=0)");
 
         // Establecemos los parámetros
-        this.nGeneraciones = generaciones;
+        if (calcularEntropiaTemporalCelula){
+            if (indxCelula < numCelulas) this.celulaObservada = indxCelula;
+            else this.celulaObservada = numCelulas-1;
+        }
+
+        this.nCelulas = numCelulas;
+        this.historialGeneraciones = new ArrayList<>(nGeneraciones);
+        this.calcularHamming = calcularHamming;
+        this.calcularEntropiaEspacial = calcularEntropiaEspacial;
+        this.calcularEntropiaTemporalCelula = calcularEntropiaTemporalCelula;
+        this.nGeneraciones = numGeneraciones;
         this.k = k;
         this.r = r;
-        this.codigoEnBase10 = codigo;
+        this.codigoEnBase10 = regla;
         this.configuracionInicial = configuracionInicial;
 
         // Reseteamos variables
         this.nGeneracionActual = 0;
         this.generacionActual = new int[nCelulas];
-        this.hamming = new int[generaciones];           // Inicializamos la curva de Hamming
-        this.entropiaEspacial = new int[nCelulas];      // Inicializamos la curva de entropia espacial
-        this.valoresCelulaObservada = new int[generaciones];  // Inicializamos los valores de la celula observada
+        this.hamming = new int[nGeneraciones];           // Inicializamos la curva de Hamming
+        this.entropiaEspacial = new double[nGeneraciones];      // Inicializamos la curva de entropia espacial
+        this.valoresCelulaObservada = new int[nGeneraciones];  // Inicializamos los valores de la celula observada
 
         // Inicializamos las células
         inicializaCelulas();
@@ -105,7 +132,7 @@ public class ca1DSim {
     private void inicializaCelulas(){
 
         // Inicialización aleatoria
-        if (this.configuracionInicial == CONFIGURACION_INICIAL.ALEATORIA){
+        if (this.configuracionInicial == CONFIGURACION_INICIALIZACION_AUTOMATA.ALEATORIA){
             for (int i=0; i<nCelulas; i++) generacionActual[i] = (int) (generadorRandu() * k);
         }
 
@@ -144,17 +171,21 @@ public class ca1DSim {
             }
 
             // Actualizamos los valores de la curva de Hamming
-            actualizaHamming(temp);
+            if (calcularHamming) actualizaHamming(temp);
 
             // Actualizamos los valores de la curva de entropía espacial
-            actualizaEntropiaEspacial(temp);
+            if (calcularEntropiaEspacial) actualizaEntropiaEspacial(temp);
 
             // Registramos el valor de la célula observada
-            valoresCelulaObservada[nGeneracionActual] = temp[celulaObservada];
+            if (calcularEntropiaTemporalCelula) valoresCelulaObservada[nGeneracionActual] = temp[celulaObservada];
+
+            // Guardamos la generacion
+            historialGeneraciones.add(temp);
 
             // Guardamos la generación nueva
             generacionActual = temp;
         }
+        else historialGeneraciones.add(generacionActual);
 
         // Guardamos la evolución
         nGeneracionActual++;
@@ -172,8 +203,8 @@ public class ca1DSim {
         this.hamming[nGeneracionActual] = hamming;
     }
 
-    public static double logConversion(double x){
-        return(Math.log(x)/Math.log(2));
+    public double logConversion(double x){
+        return(Math.log(x)/Math.log(k));
     }
 
     public void actualizaEntropiaEspacial(int[] generacion){
@@ -190,8 +221,10 @@ public class ca1DSim {
         for (int i=0; i<probabilidades.length; i++) probabilidades[i] /= generacion.length;
 
         // Formula de la entropia
-        for (int i=0; i<probabilidades.length;i++) entropiaEspacial[nGeneracionActual] += probabilidades[i] * logConversion(probabilidades[i]);
-        entropiaEspacial[nGeneracionActual] = -entropiaEspacial[nGeneracionActual];
+        for (int i=0; i<probabilidades.length;i++) entropiaEspacial[nGeneracionActual] -= probabilidades[i] * logConversion(probabilidades[i]);
+
+        entropiaEspacial[nGeneracionActual] = Math.abs(entropiaEspacial[nGeneracionActual]);
+
     }
 
     public void calculaEntropiaCelulaObservada(){
@@ -214,19 +247,32 @@ public class ca1DSim {
 
     public boolean haTerminado(){ return nGeneraciones == nGeneracionActual; }
 
-    public void reset() throws InstantiationException {
-        inicializarAutomata((int) k, r, codigoEnBase10, nGeneraciones, configuracionInicial);
+
+
+
+
+    public ArrayList<int[]> getHistorialGeneraciones() {
+        return historialGeneraciones;
     }
 
 
+    public boolean isCalcularHamming() {
+        return calcularHamming;
+    }
 
+    public boolean isCalcularEntropiaEspacial() {
+        return calcularEntropiaEspacial;
+    }
 
+    public boolean isCalcularEntropiaTemporalCelula() {
+        return calcularEntropiaTemporalCelula;
+    }
 
     public int[] getHamming() {
         return hamming;
     }
 
-    public int[] getEntropiaEspacial() {
+    public double[] getEntropiaEspacial() {
         return entropiaEspacial;
     }
 
