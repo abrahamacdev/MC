@@ -25,7 +25,7 @@ public class randomGenerator {
         RANDU
     };
 
-    private main.ALGORITMOS algoritmo = main.ALGORITMOS._26_1_a;
+    private ALGORITMOS algoritmo = ALGORITMOS._26_1_a;
     private JPanel grafica = null;      // Gráfica con los puntos
 
     private JTextArea salida = null;       // Salida de puntos generados
@@ -149,31 +149,31 @@ public class randomGenerator {
         switch (s){
 
             case "26.1a":
-                algoritmo = main.ALGORITMOS._26_1_a;
+                algoritmo = randomGenerator.ALGORITMOS._26_1_a;
                 break;
 
             case "26.1b":
-                algoritmo = main.ALGORITMOS._26_1_b;
+                algoritmo = randomGenerator.ALGORITMOS._26_1_b;
                 break;
 
             case "26.2":
-                algoritmo = main.ALGORITMOS._26_2;
+                algoritmo = randomGenerator.ALGORITMOS._26_2;
                 break;
 
             case "26.3":
-                algoritmo = main.ALGORITMOS._26_3;
+                algoritmo = randomGenerator.ALGORITMOS._26_3;
                 break;
 
             case "Combinado 26-42":
-                algoritmo = main.ALGORITMOS._26_42;
+                algoritmo = randomGenerator.ALGORITMOS._26_42;
                 break;
 
             case "Fishman y Moore":
-                algoritmo = main.ALGORITMOS.FISHMAN_MOORE;
+                algoritmo = randomGenerator.ALGORITMOS.FISHMAN_MOORE;
                 break;
 
             case "RANDU":
-                algoritmo = main.ALGORITMOS.RANDU;
+                algoritmo = randomGenerator.ALGORITMOS.RANDU;
                 break;
         }
     }
