@@ -33,6 +33,8 @@ public class ca1DSim {
 
     private CONFIGURACION_INICIALIZACION_AUTOMATA configuracionInicial; // Forma de inicializar el autómata
 
+    private CONFIGURACION_CONDICION_FRONTERA condicionFrontera;
+
     public enum CONFIGURACION_INICIALIZACION_AUTOMATA {
         ALEATORIA,
         CELULA_CENTRAL_ACTIVA
@@ -87,6 +89,7 @@ public class ca1DSim {
         this.r = r;
         this.codigoEnBase10 = regla;
         this.configuracionInicial = configuracionInicial;
+        this.condicionFrontera = condicionFrontera;
 
         // Reseteamos variables
         this.nGeneracionActual = 0;
@@ -142,6 +145,47 @@ public class ca1DSim {
         }
     }
 
+    private int calculaValorCelula(int indxCelula){
+
+        int tempV = generacionActual[indxCelula];
+
+        int porDerecha = r;
+        int porIzquierda = r;
+
+        // Cogemos los vecinos de la derecha (hasta acabar o llegar al último)
+        for (int i=indxCelula+1; i<nCelulas && porDerecha>0; i++){
+            porDerecha--;
+            tempV += generacionActual[i];
+        }
+
+        // Cogemos los vecinos de la izquierda (hasta acabar o llegar al primero)
+        for (int i=indxCelula-1; i>=0 && porIzquierda>0; i--){
+            porIzquierda--;
+            tempV += generacionActual[i];
+        }
+
+        // Si la condicion de frontera es cilíndrica, recorreremos lo que nos haga falta
+        if (condicionFrontera == CONFIGURACION_CONDICION_FRONTERA.CILINDRICA){
+            // Todavía faltaban celulas por la derecha, cogemos del principio
+            if (porDerecha > 0){
+                for (int i=0; porDerecha>0; i++){
+                    porDerecha--;
+                    tempV += generacionActual[i];
+                }
+            }
+
+            // Todavía faltaban celulas por la izquierda, cogemos del final
+            if (porIzquierda > 0){
+                for (int i=nCelulas-1; porIzquierda>0; i--){
+                    porIzquierda--;
+                    tempV += generacionActual[i];
+                }
+            }
+        }
+
+        return tempV;
+    }
+
     public void evoluciona(){
 
         // En el paso 0 no evolucionaremos (por conveniencia).
@@ -150,24 +194,8 @@ public class ca1DSim {
 
             for (int i=0; i<nCelulas; i++){
 
-                int tempV;
-
-                // Célula 0 (depende de: n-1, 0 y 1)
-                if (i == 0){
-                    tempV = generacionActual[nCelulas-1] + generacionActual[0] + generacionActual[1];
-                }
-                // Célula n-1 (depende de: n-2, n-1, 0)
-                else if(i == nCelulas-1){
-                    tempV = generacionActual[nCelulas-2] + generacionActual[nCelulas-1] + generacionActual[0];
-                }
-
-                // Célula i (depende de: i-1, i, i+1)
-                else {
-                    tempV = generacionActual[i-1] + generacionActual[i] + generacionActual[i+1];
-                }
-
                 // Obtenemos el valor correspondiente
-                temp[i] = tablaColores[tempV];
+                temp[i] = tablaColores[calculaValorCelula(i)];
             }
 
             // Actualizamos los valores de la curva de Hamming
@@ -184,6 +212,10 @@ public class ca1DSim {
 
             // Guardamos la generación nueva
             generacionActual = temp;
+
+            // Calculamos la entropia de la celula observada en caso de tener que hacerlo
+            if (isCalcularEntropiaTemporalCelula() && nGeneracionActual == nGeneraciones-1) calculaEntropiaCelulaObservada();
+
         }
         else historialGeneraciones.add(generacionActual);
 
@@ -230,19 +262,27 @@ public class ca1DSim {
     public void calculaEntropiaCelulaObservada(){
 
         double probabilidades[] = new double[(int) k];
+        entropiaCelulaObservada = 0.0;
 
         // Contamos cuantas celulas hay de cada valor para la celula observada
-        for(int i=0; i<generacionActual.length; i++){
-            int valor = generacionActual[i];
+        for(int i=0; i<nGeneraciones; i++){
+            int valor = valoresCelulaObservada[i];
             probabilidades[valor]++;
         }
 
         // Obtenemos la probabilidad de cada uno
-        for (int i=0; i<probabilidades.length; i++) probabilidades[i] /= generacionActual.length;
+        for (int i=0; i<probabilidades.length; i++) probabilidades[i] /= nGeneraciones;
 
         // Formula de la entropia
-        for (int i=0; i<probabilidades.length;i++) entropiaCelulaObservada += probabilidades[i] * logConversion(probabilidades[i]);
+        for (int i=0; i<probabilidades.length;i++) {
+            if (probabilidades[i] != 0.0){
+                double temp = probabilidades[i] * logConversion(probabilidades[i]);
+                entropiaCelulaObservada += temp;
+            }
+        }
         entropiaCelulaObservada = -entropiaCelulaObservada;
+
+        if (entropiaCelulaObservada == -0.0) entropiaCelulaObservada = 0.0;
     }
 
     public boolean haTerminado(){ return nGeneraciones == nGeneracionActual; }
