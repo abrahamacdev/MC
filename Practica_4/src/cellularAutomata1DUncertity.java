@@ -5,9 +5,8 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 
-public class ca1DSimNuevo {
+public class cellularAutomata1DUncertity {
 
     private JFrame frameOpciones;
     private JFrame frameGraficas;
@@ -28,6 +27,8 @@ public class ca1DSimNuevo {
     private JCheckBox checkBoxEntropiaEspacial;
     private JCheckBox checkBoxEntropiaTempCelula;
     private JSpinner spinnerCelulaObservada;
+
+    private JSpinner spinnerNumVecinos;
 
     // Nucleo del automata
     private ca1DSim simulador;
@@ -118,7 +119,7 @@ public class ca1DSimNuevo {
         JLabel textoRegla = new JLabel("Regla (base 10):");
         textoRegla.setBorder(new EmptyBorder(15, 0, 0, 0));
         spinnerRegla = new JSpinner();
-        spinnerRegla.setValue(700);
+        spinnerRegla.setValue(54);
         spinnerRegla.setPreferredSize(new Dimension(spinnerRegla.getPreferredSize().width, 20));
 
         // Configuracion inicial
@@ -135,13 +136,13 @@ public class ca1DSimNuevo {
         JLabel textoGeneraciones = new JLabel("Número de Generaciones:");
         textoGeneraciones.setBorder(new EmptyBorder(15, 0, 0, 0));
         spinnerGeneraciones = new JSpinner();
-        spinnerGeneraciones.setValue(600);
+        spinnerGeneraciones.setValue(300);
 
         // Nº células
         JLabel textoNumCelulas = new JLabel("Número de Células:");
         textoNumCelulas.setBorder(new EmptyBorder(15, 0, 0, 0));
         spinnerNumCelulas = new JSpinner();
-        spinnerNumCelulas.setValue(500);
+        spinnerNumCelulas.setValue(400);
 
         // Checkbox Dist. Hamming
         checkBoxHamming = new JCheckBox("Calcular distancia de Hamming");
@@ -157,14 +158,43 @@ public class ca1DSimNuevo {
         JLabel textoCelulaObservada = new JLabel("Célula");
         textoCelulaObservada.setBorder(new EmptyBorder(5, 0, 0, 0));
         spinnerCelulaObservada = new JSpinner();
-        spinnerCelulaObservada.setValue(0);
+        spinnerCelulaObservada.setValue(((int)spinnerNumCelulas.getValue()) / 2);
+
+        // Spinner regla
+        JLabel textoVecinos = new JLabel("Radio de Vecinos");
+        textoVecinos.setBorder(new EmptyBorder(5, 0, 0, 0));
+        spinnerNumVecinos = new JSpinner();
+        spinnerNumVecinos.setName("vec");
+        spinnerNumVecinos.setValue(1);
 
         // Sólo número naturales en los spinners
         ChangeListener listenerSpinners = changeEvent -> {
-            // Evitamos que se puedan introducir números negativos
-            if ((int) spinnerRegla.getValue() < 0){
-                spinnerRegla.setValue(0);
+
+            JSpinner afectado = ((JSpinner) changeEvent.getSource());
+            int valor = (int) afectado.getValue();
+            String nombre = afectado.getName();
+
+            // Para el número de vecinos
+            if (nombre != null && nombre.equals("vec")){
+
+                // Evitamos valores menores a 1
+                if (valor < 1){
+                    afectado.setValue(1);
+                }
+
+                // Evitamos valores iguales o mayores que la mitad del número de células
+                else if (valor >= (int) spinnerNumCelulas.getValue() / 2){
+                    afectado.setValue(((int) spinnerNumCelulas.getValue() / 2) - 1);
+                }
             }
+
+            else {
+                // Evitamos que se puedan introducir números negativos
+                if (valor < 0){
+                    afectado.setValue(0);
+                }
+            }
+
         };
 
         // Añadimos los listeners a los spinners
@@ -172,6 +202,7 @@ public class ca1DSimNuevo {
         spinnerCelulaObservada.addChangeListener(listenerSpinners);
         spinnerGeneraciones.addChangeListener(listenerSpinners);
         spinnerNumCelulas.addChangeListener(listenerSpinners);
+        spinnerNumVecinos.addChangeListener(listenerSpinners);
 
 
         // Añadimos algunas opciones al panel izquierdo
@@ -201,6 +232,9 @@ public class ca1DSimNuevo {
 
         panelOpcionesDerecho.add(textoCelulaObservada);
         panelOpcionesDerecho.add(spinnerCelulaObservada);
+
+        panelOpcionesDerecho.add(textoVecinos);
+        panelOpcionesDerecho.add(spinnerNumVecinos);
     }
 
     public void anadirBotonSimular(JFrame frameOpciones){
@@ -218,7 +252,7 @@ public class ca1DSimNuevo {
         // Añadimos el panel con el boton de simular
         JPanel panelBotonSimular = new JPanel();
         panelBotonSimular.setLayout(new GridLayout(3,3));
-        panelBotonSimular.setBackground(Color.RED);
+        //panelBotonSimular.setBackground(Color.RED);
 
         // Boton que permitira realizar la simulación
         JButton botonSimular = new JButton("Simular");
@@ -362,12 +396,13 @@ public class ca1DSimNuevo {
 
 
         JPanel panelControladorTextoHamming = new JPanel();
-        panelControladorTextoHamming.setBackground(Color.ORANGE);
-        panelControladorTextoHamming.setLayout(new GridLayout(1, 2));
+        panelControladorTextoHamming.setBackground(Color.WHITE);
+        panelControladorTextoHamming.setLayout(new GridLayout(1, 1));
 
-        panelControladorTextoHamming.add(new JLabel());
-        panelControladorTextoHamming.add(new JLabel("Hamming"));
+        JLabel textoHamming = new JLabel("Curva Distancia Hamming");
+        textoHamming.setHorizontalAlignment(SwingConstants.CENTER);
 
+        panelControladorTextoHamming.add(textoHamming);
         panelControladorHamming.add(panelControladorTextoHamming, gbc);
 
 
@@ -402,12 +437,8 @@ public class ca1DSimNuevo {
 
                 int anchoLinea = ancho / entropiaEspacial.length;
 
-                System.out.println(Arrays.toString(entropiaEspacial));
-
                 // Pintamos la curva de la entropia espacial
                 for (int i=0; i<entropiaEspacial.length-1; i++){
-
-                    // Evitamos pintar los NaN
 
                     int x0 = i * anchoLinea;
                     int x1 = (i+1) * anchoLinea;
@@ -420,7 +451,7 @@ public class ca1DSimNuevo {
                     if (y1 > alto) y1 = alto-1;
                     else if (y1 < 1) y1 = 2;
 
-                    System.out.println("X0: " + x0 + ", X1: " + x1 + ", Y0: " + y0 + ", Y1: " + y1);
+                    //System.out.println("X0: " + x0 + ", X1: " + x1 + ", Y0: " + y0 + ", Y1: " + y1);
 
                     // Pintamos la linea
                     g.drawLine(x0, y0, x1, y1);
@@ -449,12 +480,13 @@ public class ca1DSimNuevo {
 
 
         JPanel panelTextoEntropiaEspacial = new JPanel();
-        panelTextoEntropiaEspacial.setBackground(Color.ORANGE);
-        panelTextoEntropiaEspacial.setLayout(new GridLayout(1, 2));
+        panelTextoEntropiaEspacial.setBackground(Color.WHITE);
+        panelTextoEntropiaEspacial.setLayout(new GridLayout(1, 1));
 
-        panelTextoEntropiaEspacial.add(new JLabel());
-        panelTextoEntropiaEspacial.add(new JLabel("Entropía Espacial"));
+        JLabel textoEntropiaEspacial = new JLabel("Curva Entropía Espacial");
+        textoEntropiaEspacial.setHorizontalAlignment(SwingConstants.CENTER);
 
+        panelTextoEntropiaEspacial.add(textoEntropiaEspacial);
         panelControladorEntropiaEspacial.add(panelTextoEntropiaEspacial, gbc);
 
 
@@ -464,12 +496,56 @@ public class ca1DSimNuevo {
     }
 
     public void anadirGraficaEntropiaTemporalCelula(){
+
+        JPanel panelControladorEntropiaTemporal = new JPanel();
+        panelControladorEntropiaTemporal.setLayout(new GridBagLayout());
+
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.anchor = GridBagConstraints.FIRST_LINE_START;
+        gbc.gridy = 0;          // Fila que ocupara desde arriba izquierda
+        gbc.gridx = 0;          // Columna que ocupará desde arriba izquierda
+        gbc.gridheight = 1;     // Nº de filas que ocupará verticalmente
+        gbc.weightx = 1.0;      // Porcentaje sobre el eje x (ancho) que ocupará
+        gbc.weighty = 1.0;      // Porcentaje sobre el eje y (alto) que ocupará
+
+        JPanel panelLabelTextoEntropiaTemporal = new JPanel();
+        panelLabelTextoEntropiaTemporal.setBackground(Color.WHITE);
+        panelLabelTextoEntropiaTemporal.setLayout(new GridBagLayout());
+
+        JLabel textoCurvaEntropiaTemporal = new JLabel(String.format("%.4f", (float) simulador.getEntropiaCelulaObservada()));
+        textoCurvaEntropiaTemporal.setHorizontalAlignment(SwingConstants.CENTER);
+        textoCurvaEntropiaTemporal.setFont(new Font("serif", Font.BOLD, 24));
+        textoCurvaEntropiaTemporal.setForeground(Color.GREEN);
+
+        // Añadimos el panel con el valor de la entropia temporal
+        panelLabelTextoEntropiaTemporal.add(textoCurvaEntropiaTemporal, gbc);
+        gbc.weighty = 0.9;
+        panelControladorEntropiaTemporal.add(panelLabelTextoEntropiaTemporal, gbc);
+
+        // Añadimos el panel con el texto de que se muestra aquí
+        JPanel panelLabelEntropiaTemporal = new JPanel();
+        panelLabelEntropiaTemporal.setBackground(Color.WHITE);
+        panelLabelEntropiaTemporal.setLayout(new GridBagLayout());
+
+        // Label del panel
+        JLabel labelEntropiaTemporal = new JLabel("Entropía Temporal Célula Observada");
+        labelEntropiaTemporal.setHorizontalAlignment(SwingConstants.CENTER);
+        gbc.weighty = 1.0;
+        panelLabelEntropiaTemporal.add(labelEntropiaTemporal, gbc);
+        gbc.weighty = 0.1;
+        gbc.gridy = 1;
+        panelControladorEntropiaTemporal.add(panelLabelEntropiaTemporal, gbc);
+
+        // Añadimos la imagen del automata
+        frameGraficas.add(panelControladorEntropiaTemporal, gbc);
     }
 
     private void anadirGraficas(){
 
         int anchoFrame = 1600;
-        int altoFrame = 700;
+        int altoFrame = 640;
 
         // Destruimos los resultados anteriores
         if (frameGraficas != null){
@@ -508,6 +584,7 @@ public class ca1DSimNuevo {
 
         int numEstados = comboNumEstadosCelulas.getSelectedIndex() + 2;
         int regla = (int) spinnerRegla.getValue();
+        int radioVecinos = (int) spinnerNumVecinos.getValue();
         ca1DSim.CONFIGURACION_INICIALIZACION_AUTOMATA configuracionInicial = comboConfInicial.getSelectedIndex() == 0 ? ca1DSim.CONFIGURACION_INICIALIZACION_AUTOMATA.ALEATORIA : ca1DSim.CONFIGURACION_INICIALIZACION_AUTOMATA.CELULA_CENTRAL_ACTIVA;
         ca1DSim.CONFIGURACION_CONDICION_FRONTERA configuracionCondicionFrontera = comboCondFrontera.getSelectedIndex() == 0 ? ca1DSim.CONFIGURACION_CONDICION_FRONTERA.NULA : ca1DSim.CONFIGURACION_CONDICION_FRONTERA.CILINDRICA;
         int numGeneraciones = (int) spinnerGeneraciones.getValue();
@@ -518,7 +595,7 @@ public class ca1DSimNuevo {
         int indxCelulaObservada = (int) spinnerCelulaObservada.getValue();
 
         try {
-            simulador = new ca1DSim(numEstados, 1, regla, configuracionInicial, configuracionCondicionFrontera, numGeneraciones, numCelulas, dstHamming, entropiaEspacial, entropiaTemporalCelula, indxCelulaObservada);
+            simulador = new ca1DSim(numEstados, radioVecinos, regla, configuracionInicial, configuracionCondicionFrontera, numGeneraciones, numCelulas, dstHamming, entropiaEspacial, entropiaTemporalCelula, indxCelulaObservada);
 
             // Realizamos la simulacion
             while (!simulador.haTerminado()) simulador.evoluciona();
@@ -559,6 +636,6 @@ public class ca1DSimNuevo {
     }
 
     public static void main(String[] args) throws Exception {
-        new ca1DSimNuevo().crearVentana();
+        new cellularAutomata1DUncertity().crearVentana();
     }
 }
