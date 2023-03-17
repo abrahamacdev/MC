@@ -11,9 +11,9 @@ public class main {
     private int numGeneraciones = 1000;
     private int numCelulas = 1024;
 
+    public static final int REGLA_ESCOGIDA = 531;
 
-
-    private int REGLA_ESCOGIDA = 531;
+    public static final int TAM_CLAVE = 512;    // Nº de bits que compondrán la clave
 
 
 
@@ -102,12 +102,69 @@ public class main {
     // ----- Cifrado -----
     public String cifrar(String clave, String texto){
 
+        int[] bitsClave = string2bits(clave);       // Bits que forman la clave en bruto
+        int[] bitsClaveFinal = new int[TAM_CLAVE];  // Bits que forman la clave que se usará finalmente para cifrar
+        int[] bitsTexto = string2bits(texto);       // Bits que forman el texto a cifrar
 
+        int[] bitsMensajeCifrado = new int[bitsTexto.length];   // Bits que forman el texto cifrado
 
-        return null;
+        // Si la clave es muy larga, cogemos los primeros 512 bits, si es muy corta, lo que se pueda
+        if (bitsClave.length > TAM_CLAVE) bitsClaveFinal = Arrays.copyOf(bitsClave, 512);
+        else System.arraycopy(bitsClave, 0, bitsClaveFinal, 0, bitsClave.length);
+
+        ca1DSim simulador = null;
+
+        try {
+            simulador = new ca1DSim(k, r, REGLA_ESCOGIDA, bitsTexto.length, bitsClaveFinal);
+        } catch (Exception e) {
+            System.out.println("No se ha podido realizar el cifrado");
+        }
+
+        // Ciframos el mensaje
+        return ejecutarSimulador(bitsTexto, bitsMensajeCifrado, simulador);
     }
-    public String descifrar(){
-        return null;
+    public String descifrar(String clave, String criptograma){
+
+        int[] bitsClave = string2bits(clave);           // Bits que forman la clave en bruto
+        int[] bitsClaveFinal = new int[TAM_CLAVE];      // Bits que forman la clave que se usará finalmente para descifrar
+        int[] bitsCriptograma = string2bits(criptograma);     // Bits que forman el criptograma
+
+        int[] bitsMensajeDescifrado = new int[bitsCriptograma.length];   // Bits que forman el texto descifrado
+
+        // Si la clave es muy larga, cogemos los primeros 512 bits, si es muy corta, lo que se pueda
+        if (bitsClave.length > TAM_CLAVE) bitsClaveFinal = Arrays.copyOf(bitsClave, 512);
+        else System.arraycopy(bitsClave, 0, bitsClaveFinal, 0, bitsClave.length);
+
+        ca1DSim simulador = null;
+
+        try {
+            simulador = new ca1DSim(k, r, REGLA_ESCOGIDA, bitsCriptograma.length, bitsClaveFinal);
+        } catch (Exception e) {
+            System.out.println("No se ha podido realizar el descifrado");
+        }
+
+        // Ciframos el mensaje
+        return ejecutarSimulador(bitsCriptograma, bitsMensajeDescifrado, simulador);
+    }
+
+    private String ejecutarSimulador(int[] bitsCriptograma, int[] bitsMensajeDescifrado, ca1DSim simulador) {
+
+        if (simulador != null) {
+
+            int i=0;
+            while (!simulador.haTerminado()){
+
+                simulador.evoluciona();
+
+                // XOR entre el valor de la célula central y el correspondiente bit del mensaje
+                int celulaCentral = simulador.getCelulaObsertada();
+                bitsMensajeDescifrado[i] = bitsCriptograma[i] ^ celulaCentral;
+
+                i++;
+            }
+        }
+
+        return bits2string(bitsMensajeDescifrado);
     }
     // --------------------------------------
 
@@ -188,5 +245,14 @@ public class main {
         //calcularMejoresReglas(reglaMax);
 
         main m = new main();
+
+        String clave = "12345";
+
+        String criptograma = m.cifrar(clave, "Texto a cifrar");
+        String textoDescifrado = m.descifrar(clave, criptograma);
+
+        System.out.println("Texto cifrado: '" + criptograma + "'");
+        System.out.println("Texto descifrado: '" + textoDescifrado + "'");
+
     }
 }

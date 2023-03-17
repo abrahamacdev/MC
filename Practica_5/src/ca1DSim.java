@@ -335,6 +335,7 @@ public class ca1DSim {
 
 
 
+
     public void setCodigo(int codigoEnBase10) {
         this.codigoEnBase10 = codigoEnBase10;
     }
@@ -367,6 +368,10 @@ public class ca1DSim {
 
     public double getEntropiaCelulaObservada() {
         return entropiaCelulaObservada;
+    }
+
+    public int getCelulaObsertada(){
+        return generacionActual[celulaObservada];
     }
 
     public int[] getGeneracionActual(){ return this.generacionActual; }
