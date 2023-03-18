@@ -342,7 +342,7 @@ public class main {
         gbc.gridheight = 1;
         gbc.gridwidth = 1;
         gbc.weighty = 0.9;
-        gbc.weightx = 0.5;
+        gbc.weightx = 1;
 
         JPanel panelCifrado = new JPanel();
         panelCifrado.setBorder(new EmptyBorder(20, 30, 0, 30));
@@ -450,8 +450,11 @@ public class main {
 
     public void crearVentana() {
 
-        int anchoFrame = 1000;
-        int altoFrame = 850;
+        //int anchoFrame = 1000;
+        //int altoFrame = 850;
+
+        int anchoFrame = 550;
+        int altoFrame = 500;
 
         framePrincipal = new JFrame("GUI");
 
@@ -462,7 +465,7 @@ public class main {
         anadirPanelCifrado();
 
         // Panel para descifrar
-        anadirPanelDescifrado();
+        //anadirPanelDescifrado();
 
         // Panel para limpiar
         anadirPanelOpciones();
@@ -485,20 +488,10 @@ public class main {
         int reglaMax = 1000;
 
         main m = new main();
-        //m.crearVentana();
+        m.crearVentana();
 
         // Para filtrar las mejores reglas
         //m.calcularMejoresReglas(reglaMax);
-
-        String textoBruto = "Ejemplo de texto que se tiene que cifrar";
-        String clave1 = "H5wVs4go8BntK7A47uVfmU3pZH7rsDNU";
-        String clave2 = "123";
-
-
-        String criptograma = m.cifrar(clave1, textoBruto);
-        String textoRecuperado = m.descifrar(clave1, criptograma);
-
-        System.out.println("Resultado final: " + textoRecuperado);
 
     }
 }
