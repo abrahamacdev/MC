@@ -154,9 +154,9 @@ public class ca1DSim {
         }
 
         // Registramos los primeros valores
-        actualizaHamming(generacionActual);
-        actualizaEntropiaEspacial(generacionActual);
-        valoresCelulaObservada[nGeneracionActual] = generacionActual[celulaObservada];
+        actualizaHamming(this.generacionActual);
+        actualizaEntropiaEspacial(this.generacionActual);
+        valoresCelulaObservada[nGeneracionActual] = this.generacionActual[celulaObservada];
     }
 
     private void inicializarTablaColores(){

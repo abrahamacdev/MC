@@ -1,3 +1,6 @@
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -7,7 +10,7 @@ import java.util.BitSet;
 public class main {
 
     private int k = 2;
-    private int r = 10;
+    private int r = 1;
     private int numGeneraciones = 1000;
     private int numCelulas = 1024;
 
@@ -16,8 +19,11 @@ public class main {
     public static final int TAM_CLAVE = 512;    // Nº de bits que compondrán la clave
 
 
+    private JFrame framePrincipal;
 
-    // ----- Calculo de mejores reglas -----
+
+
+    // ----- Estudio de reglas -----
     private void guardarMejoresReglas(ArrayList<Integer> mejoresReglas){
 
         try {
@@ -166,11 +172,6 @@ public class main {
 
         return bits2string(bitsMensajeDescifrado);
     }
-    // --------------------------------------
-
-
-
-
 
     private int[] string2bits(String s){
 
@@ -234,6 +235,122 @@ public class main {
 
         return new String(bytes, StandardCharsets.UTF_8);
     }
+    // --------------------------------------
+
+
+
+    // ----- GUI -----
+    private void anadirPanelCifrado(){
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.anchor = GridBagConstraints.FIRST_LINE_START;
+        gbc.gridy = 0;
+        gbc.gridx = 0;
+        gbc.gridheight = 1;
+        gbc.gridwidth = 1;
+        gbc.weighty = 0.9;
+        gbc.weightx = 0.5;
+
+        JPanel panelCifrado = new JPanel();
+        panelCifrado.setBorder(new EmptyBorder(0, 30, 0, 30));
+        panelCifrado.setBackground(Color.BLUE);
+        panelCifrado.setLayout(new GridLayout(10, 1));
+
+        // Label clave y TextArea clave
+        JLabel labelClaveCifrado = new JLabel("Introduzca la clave de cifrado");
+        labelClaveCifrado.setBorder(new EmptyBorder(30, 0, 0, 0));
+        JTextArea textAreaClaveCifrado = new JTextArea();
+        JScrollPane scrollTextAreaClaveCifrado = new JScrollPane (textAreaClaveCifrado,
+                JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+
+        panelCifrado.add(new JLabel());
+        panelCifrado.add(labelClaveCifrado);
+        panelCifrado.add(scrollTextAreaClaveCifrado);
+
+        framePrincipal.add(panelCifrado, gbc);
+
+    }
+
+    private void anadirPanelDescifrado(){
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.anchor = GridBagConstraints.FIRST_LINE_START;
+        gbc.gridy = 0;
+        gbc.gridx = 1;
+        gbc.gridheight = 1;
+        gbc.gridwidth = 1;
+        gbc.weighty = 0.9;
+        gbc.weightx = 0.5;
+
+        JPanel panelDescifrado = new JPanel();
+        panelDescifrado.setBorder(new EmptyBorder(0, 30, 0, 30));
+        panelDescifrado.setBackground(Color.RED);
+        panelDescifrado.setLayout(new GridLayout(10, 1));
+
+        // Label clave y TextArea clave
+        JLabel labelClaveDescifrado = new JLabel("Introduzca la clave de descifrado");
+        labelClaveDescifrado.setBorder(new EmptyBorder(30, 0, 0, 0));
+        JTextArea textAreaClaveDescifrado = new JTextArea();
+        JScrollPane scrollTextAreaClaveDescifrado = new JScrollPane (textAreaClaveDescifrado,
+                JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+
+        panelDescifrado.add(new JLabel());
+        panelDescifrado.add(labelClaveDescifrado);
+        panelDescifrado.add(scrollTextAreaClaveDescifrado);
+
+        framePrincipal.add(panelDescifrado, gbc);
+
+    }
+
+    private void anadirPanelOpciones(){
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.anchor = GridBagConstraints.FIRST_LINE_START;
+        gbc.gridy = 1;
+        gbc.gridx = 0;
+        gbc.gridheight = 1;
+        gbc.gridwidth = 2;
+        gbc.weighty = 0.1;
+        gbc.weightx = 1;
+        gbc.insets = new Insets(0, 0, 0, 0);
+
+        JPanel panelOpciones = new JPanel();
+        panelOpciones.setBackground(Color.ORANGE);
+
+        framePrincipal.add(panelOpciones, gbc);
+    }
+
+    public void crearVentana() {
+
+        int anchoFrame = 1000;
+        int altoFrame = 850;
+
+        framePrincipal = new JFrame("GUI");
+
+        // Creamos el grid principal del frame
+        framePrincipal.getContentPane().setLayout(new GridBagLayout());
+
+        // Panel para cifrar
+        anadirPanelCifrado();
+
+        // Panel para descifrar
+        anadirPanelDescifrado();
+
+        // Panel para limpiar
+        anadirPanelOpciones();
+
+        //
+        framePrincipal.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        framePrincipal.setMinimumSize(new Dimension(anchoFrame, altoFrame));
+        framePrincipal.setResizable(false);
+        framePrincipal.setLocationRelativeTo(null);
+        framePrincipal.pack();
+        framePrincipal.setVisible(true);
+    }
+    // ---------------
 
 
 
@@ -242,17 +359,11 @@ public class main {
 
         int reglaMax = 1000;
 
-        //calcularMejoresReglas(reglaMax);
-
         main m = new main();
+        m.crearVentana();
 
-        String clave = "12345";
-
-        String criptograma = m.cifrar(clave, "Texto a cifrar");
-        String textoDescifrado = m.descifrar(clave, criptograma);
-
-        System.out.println("Texto cifrado: '" + criptograma + "'");
-        System.out.println("Texto descifrado: '" + textoDescifrado + "'");
+        // Para filtrar las mejores reglas
+        //m.calcularMejoresReglas(reglaMax);
 
     }
 }
