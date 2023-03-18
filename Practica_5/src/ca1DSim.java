@@ -106,7 +106,8 @@ public class ca1DSim {
     private void inicializarAutomata(int k, int r, int regla, CONFIGURACION_INICIALIZACION_AUTOMATA configuracionInicial,
                                      CONFIGURACION_CONDICION_FRONTERA condicionFrontera, int numGeneraciones,
                                      int numCelulas, boolean calcularHamming, boolean calcularEntropiaEspacial,
-                                     boolean calcularEntropiaTemporalCelula, int indxCelula, boolean inicializarGeneracionActual, int[] generacionActual) throws InstantiationException {
+                                     boolean calcularEntropiaTemporalCelula, int indxCelula, boolean inicializarGeneracionActual,
+                                     int[] generacionActual) throws InstantiationException {
 
         // 2 <= k <= 5
         if (k < 2 || k > 5) throw new InstantiationException("Valor no válido para k (2-5)");

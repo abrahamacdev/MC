@@ -1,6 +1,8 @@
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -20,6 +22,17 @@ public class main {
 
 
     private JFrame framePrincipal;
+
+    // Descifrado
+    private JTextArea textAreaClaveDescifrado;
+    private JTextArea textAreaCriptograma;
+    private JTextArea textAreaTextoDescifrado;
+
+    // Cifrado
+    private JTextArea textAreaClaveCifrado;
+    private JTextArea textAreaTextoACifrar;
+    private JTextArea textAreaTextoCifrado;
+
 
 
 
@@ -240,39 +253,10 @@ public class main {
 
 
     // ----- GUI -----
-    private void anadirPanelCifrado(){
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.fill = GridBagConstraints.BOTH;
-        gbc.anchor = GridBagConstraints.FIRST_LINE_START;
-        gbc.gridy = 0;
-        gbc.gridx = 0;
-        gbc.gridheight = 1;
-        gbc.gridwidth = 1;
-        gbc.weighty = 0.9;
-        gbc.weightx = 0.5;
-
-        JPanel panelCifrado = new JPanel();
-        panelCifrado.setBorder(new EmptyBorder(0, 30, 0, 30));
-        panelCifrado.setBackground(Color.BLUE);
-        panelCifrado.setLayout(new GridLayout(10, 1));
-
-        // Label clave y TextArea clave
-        JLabel labelClaveCifrado = new JLabel("Introduzca la clave de cifrado");
-        labelClaveCifrado.setBorder(new EmptyBorder(30, 0, 0, 0));
-        JTextArea textAreaClaveCifrado = new JTextArea();
-        JScrollPane scrollTextAreaClaveCifrado = new JScrollPane (textAreaClaveCifrado,
-                JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-
-        panelCifrado.add(new JLabel());
-        panelCifrado.add(labelClaveCifrado);
-        panelCifrado.add(scrollTextAreaClaveCifrado);
-
-        framePrincipal.add(panelCifrado, gbc);
-
-    }
 
     private void anadirPanelDescifrado(){
+
+        int margenSuperiorLabels = 50;
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.BOTH;
@@ -285,25 +269,142 @@ public class main {
         gbc.weightx = 0.5;
 
         JPanel panelDescifrado = new JPanel();
-        panelDescifrado.setBorder(new EmptyBorder(0, 30, 0, 30));
-        panelDescifrado.setBackground(Color.RED);
-        panelDescifrado.setLayout(new GridLayout(10, 1));
+        panelDescifrado.setBorder(new EmptyBorder(20, 30, 0, 30));
+        //panelDescifrado.setBackground(Color.RED);
+        panelDescifrado.setLayout(new GridLayout(7, 1));
 
         // Label clave y TextArea clave
         JLabel labelClaveDescifrado = new JLabel("Introduzca la clave de descifrado");
-        labelClaveDescifrado.setBorder(new EmptyBorder(30, 0, 0, 0));
-        JTextArea textAreaClaveDescifrado = new JTextArea();
+        labelClaveDescifrado.setBorder(new EmptyBorder(margenSuperiorLabels, 0, 0, 0));
+        textAreaClaveDescifrado = new JTextArea();
         JScrollPane scrollTextAreaClaveDescifrado = new JScrollPane (textAreaClaveDescifrado,
                 JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
-        panelDescifrado.add(new JLabel());
+
+        // Label texto y TextArea texto
+        JLabel labelCriptograma = new JLabel("Introduzca el texto a descifrar");
+        labelCriptograma.setBorder(new EmptyBorder(margenSuperiorLabels, 0, 0, 0));
+        textAreaCriptograma = new JTextArea();
+        JScrollPane scrollTextAreaCriptograma = new JScrollPane (textAreaCriptograma,
+                JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+
+        // Boton descifrar
+        JPanel panelBotonDescifrar = new JPanel();
+        //panelBotonDescifrar.setBackground(Color.WHITE);
+        panelBotonDescifrar.setLayout(new GridLayout(2,1));
+        JButton botonDescifrar = new JButton("Descifrar");
+        botonDescifrar.addActionListener(actionEvent -> {
+
+            // Obtenemos clave y texto a cifrar
+            String clave = textAreaClaveDescifrado.getText();
+            String criptograma = textAreaCriptograma.getText();
+
+            // Ciframos y mostramos
+            String textoBruto = descifrar(clave, criptograma);
+            textAreaTextoDescifrado.setText(textoBruto);
+        });
+        panelBotonDescifrar.add(new JLabel(""));
+        panelBotonDescifrar.add(botonDescifrar);
+
+        // TextArea Texto descifrado
+        textAreaTextoDescifrado = new JTextArea();
+        textAreaTextoDescifrado.setEditable(false);
+        JScrollPane scrollTextAreaTextoDescifrado = new JScrollPane (textAreaTextoDescifrado,
+                JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+
+        // Clave
         panelDescifrado.add(labelClaveDescifrado);
         panelDescifrado.add(scrollTextAreaClaveDescifrado);
+
+        // Criptograma
+        panelDescifrado.add(labelCriptograma);
+        panelDescifrado.add(scrollTextAreaCriptograma);
+
+        // BOton descifrar
+        panelDescifrado.add(panelBotonDescifrar);
+
+        // Texto descifrado
+        panelDescifrado.add(new JLabel());
+        panelDescifrado.add(scrollTextAreaTextoDescifrado);
 
         framePrincipal.add(panelDescifrado, gbc);
 
     }
+    private void anadirPanelCifrado(){
 
+        int margenSuperiorLabels = 50;
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.anchor = GridBagConstraints.FIRST_LINE_START;
+        gbc.gridy = 0;
+        gbc.gridx = 0;
+        gbc.gridheight = 1;
+        gbc.gridwidth = 1;
+        gbc.weighty = 0.9;
+        gbc.weightx = 0.5;
+
+        JPanel panelCifrado = new JPanel();
+        panelCifrado.setBorder(new EmptyBorder(20, 30, 0, 30));
+        //panelDescifrado.setBackground(Color.RED);
+        panelCifrado.setLayout(new GridLayout(7, 1));
+
+        // Label clave y TextArea clave
+        JLabel labelClaveCifrado = new JLabel("Introduzca la clave de cifrado");
+        labelClaveCifrado.setBorder(new EmptyBorder(margenSuperiorLabels, 0, 0, 0));
+        textAreaClaveCifrado = new JTextArea();
+        JScrollPane scrollTextAreaClaveCifrado = new JScrollPane (textAreaClaveCifrado,
+                JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+
+
+        // Label texto y TextArea texto
+        JLabel labelTextoACifrar = new JLabel("Introduzca el texto a cifrar");
+        labelTextoACifrar.setBorder(new EmptyBorder(margenSuperiorLabels, 0, 0, 0));
+        textAreaTextoACifrar = new JTextArea();
+        JScrollPane scrollTextAreaTextoACifrar = new JScrollPane (textAreaTextoACifrar,
+                JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+
+        // Boton descifrar
+        JPanel panelBotonCifrar = new JPanel();
+        //panelBotonDescifrar.setBackground(Color.WHITE);
+        panelBotonCifrar.setLayout(new GridLayout(2,1));
+        JButton botonCifrar = new JButton("Cifrar");
+        botonCifrar.addActionListener(actionEvent -> {
+
+            // Obtenemos clave y texto a cifrar
+            String clave = textAreaClaveCifrado.getText();
+            String textoACifrar = textAreaTextoACifrar.getText();
+
+            // Ciframos y mostramos
+            String criptograma = cifrar(clave, textoACifrar);
+            textAreaTextoCifrado.setText(criptograma);
+        });
+        panelBotonCifrar.add(new JLabel(""));
+        panelBotonCifrar.add(botonCifrar);
+
+        // TextArea Texto cifrado
+        textAreaTextoCifrado = new JTextArea();
+        textAreaTextoCifrado.setEditable(false);
+        JScrollPane scrollTextAreaTextoCifrado = new JScrollPane (textAreaTextoCifrado,
+                JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+
+        // Clave
+        panelCifrado.add(labelClaveCifrado);
+        panelCifrado.add(scrollTextAreaClaveCifrado);
+
+        // Texto a cifrar
+        panelCifrado.add(labelTextoACifrar);
+        panelCifrado.add(scrollTextAreaTextoACifrar);
+
+        // Boton cifrar
+        panelCifrado.add(panelBotonCifrar);
+
+        // Texto cifrado
+        panelCifrado.add(new JLabel());
+        panelCifrado.add(scrollTextAreaTextoCifrado);
+
+        framePrincipal.add(panelCifrado, gbc);
+    }
     private void anadirPanelOpciones(){
 
         GridBagConstraints gbc = new GridBagConstraints();
@@ -313,12 +414,36 @@ public class main {
         gbc.gridx = 0;
         gbc.gridheight = 1;
         gbc.gridwidth = 2;
-        gbc.weighty = 0.1;
+        gbc.weighty = 0.2;
         gbc.weightx = 1;
         gbc.insets = new Insets(0, 0, 0, 0);
 
         JPanel panelOpciones = new JPanel();
-        panelOpciones.setBackground(Color.ORANGE);
+        //panelOpciones.setBackground(Color.ORANGE);
+        panelOpciones.setLayout(new GridLayout(3, 5));
+
+        JButton botonLimpiar = new JButton("Limpiar");
+        botonLimpiar.addActionListener(actionEvent -> {
+
+            // Cifrado
+            textAreaClaveCifrado.setText("");
+            textAreaTextoACifrar.setText("");
+            textAreaTextoCifrado.setText("");
+
+            // Descifrado
+            textAreaClaveDescifrado.setText("");
+            textAreaCriptograma.setText("");
+            textAreaTextoDescifrado.setText("");
+        });
+
+        panelOpciones.add(new JLabel());
+        panelOpciones.add(new JLabel());
+        panelOpciones.add(new JLabel());
+        panelOpciones.add(new JLabel());
+        panelOpciones.add(botonLimpiar);
+        panelOpciones.add(new JLabel());
+        panelOpciones.add(new JLabel());
+
 
         framePrincipal.add(panelOpciones, gbc);
     }
@@ -360,10 +485,20 @@ public class main {
         int reglaMax = 1000;
 
         main m = new main();
-        m.crearVentana();
+        //m.crearVentana();
 
         // Para filtrar las mejores reglas
         //m.calcularMejoresReglas(reglaMax);
+
+        String textoBruto = "Ejemplo de texto que se tiene que cifrar";
+        String clave1 = "H5wVs4go8BntK7A47uVfmU3pZH7rsDNU";
+        String clave2 = "123";
+
+
+        String criptograma = m.cifrar(clave1, textoBruto);
+        String textoRecuperado = m.descifrar(clave1, criptograma);
+
+        System.out.println("Resultado final: " + textoRecuperado);
 
     }
 }
