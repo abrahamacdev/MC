@@ -119,13 +119,14 @@ public class main {
 
 
     // ----- Cifrado -----
+    private int xor(int i1, int i2){
+        return i1 == i2 ? 0 : 1;
+    }
     public String cifrar(String clave, String texto){
 
         int[] bitsClave = string2bits(clave);       // Bits que forman la clave en bruto
         int[] bitsClaveFinal = new int[TAM_CLAVE];  // Bits que forman la clave que se usará finalmente para cifrar
         int[] bitsTexto = string2bits(texto);       // Bits que forman el texto a cifrar
-
-        int[] bitsMensajeCifrado = new int[bitsTexto.length];   // Bits que forman el texto cifrado
 
         // Si la clave es muy larga, cogemos los primeros 512 bits, si es muy corta, lo que se pueda
         if (bitsClave.length > TAM_CLAVE) bitsClaveFinal = Arrays.copyOf(bitsClave, 512);
@@ -140,15 +141,13 @@ public class main {
         }
 
         // Ciframos el mensaje
-        return ejecutarSimulador(bitsTexto, bitsMensajeCifrado, simulador);
+        return ejecutarSimulador(bitsTexto, simulador);
     }
     public String descifrar(String clave, String criptograma){
 
         int[] bitsClave = string2bits(clave);           // Bits que forman la clave en bruto
         int[] bitsClaveFinal = new int[TAM_CLAVE];      // Bits que forman la clave que se usará finalmente para descifrar
         int[] bitsCriptograma = string2bits(criptograma);     // Bits que forman el criptograma
-
-        int[] bitsMensajeDescifrado = new int[bitsCriptograma.length];   // Bits que forman el texto descifrado
 
         // Si la clave es muy larga, cogemos los primeros 512 bits, si es muy corta, lo que se pueda
         if (bitsClave.length > TAM_CLAVE) bitsClaveFinal = Arrays.copyOf(bitsClave, 512);
@@ -163,12 +162,19 @@ public class main {
         }
 
         // Ciframos el mensaje
-        return ejecutarSimulador(bitsCriptograma, bitsMensajeDescifrado, simulador);
+        return ejecutarSimulador(bitsCriptograma, simulador);
     }
 
-    private String ejecutarSimulador(int[] bitsCriptograma, int[] bitsMensajeDescifrado, ca1DSim simulador) {
+    private String ejecutarSimulador(int[] bitsTexto, ca1DSim simulador) {
+
+        int[] bitsResultado = new int[bitsTexto.length];
 
         if (simulador != null) {
+
+            ArrayList<Integer> secuenciaClave = new ArrayList<>();
+            ArrayList<Integer> secuenciaMensaje = new ArrayList<>();
+            ArrayList<Integer> secuenciaResultado = new ArrayList<>();
+
 
             int i=0;
             while (!simulador.haTerminado()){
@@ -177,13 +183,17 @@ public class main {
 
                 // XOR entre el valor de la célula central y el correspondiente bit del mensaje
                 int celulaCentral = simulador.getCelulaObsertada();
-                bitsMensajeDescifrado[i] = bitsCriptograma[i] ^ celulaCentral;
+                bitsResultado[i] = xor(bitsTexto[i], celulaCentral);
+
+                secuenciaClave.add(celulaCentral);
+                secuenciaMensaje.add(bitsTexto[i]);
+                secuenciaResultado.add(bitsResultado[i]);
 
                 i++;
             }
         }
 
-        return bits2string(bitsMensajeDescifrado);
+        return bits2string(bitsResultado);
     }
 
     private int[] string2bits(String s){
@@ -431,9 +441,9 @@ public class main {
             textAreaTextoCifrado.setText("");
 
             // Descifrado
-            textAreaClaveDescifrado.setText("");
+            /*textAreaClaveDescifrado.setText("");
             textAreaCriptograma.setText("");
-            textAreaTextoDescifrado.setText("");
+            textAreaTextoDescifrado.setText("");*/
         });
 
         panelOpciones.add(new JLabel());
@@ -492,6 +502,14 @@ public class main {
 
         // Para filtrar las mejores reglas
         //m.calcularMejoresReglas(reglaMax);
+
+        /*String original = "Ejemplo de mensaje a cifrar";
+        String clave = "1234567";
+
+        String mensajeCifrado = m.cifrar(clave, original);
+
+        System.out.println("Cifrado: " + mensajeCifrado);
+        System.out.println("Descifrado: " + m.descifrar(clave, mensajeCifrado));*/
 
     }
 }
