@@ -1,15 +1,13 @@
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 
-public class main {
+public class cipherVernam {
 
     private int k = 2;
     private int r = 1;
@@ -493,14 +491,13 @@ public class main {
 
 
 
-    public static void main(String[] args) throws InstantiationException {
+    public static void main(String[] args) {
 
-        int reglaMax = 1000;
-
-        main m = new main();
+        cipherVernam m = new cipherVernam();
         m.crearVentana();
 
         // Para filtrar las mejores reglas
+        //int reglaMax = 1000;
         //m.calcularMejoresReglas(reglaMax);
 
         /*String original = "Ejemplo de mensaje a cifrar";
