@@ -23,14 +23,12 @@ public class lifeSim {
         }
     }
 
-    private static final double PROB_CELULAS_ALEATORIAS = 0.3;
-    private static final double PROB_NUM_ISLAS = 0.25;
-    private static final int RADIO_ISLA = 2;
+    private static final double PROB_CELULAS_ALEATORIAS = 0.1;
+    private static final double PROB_NUM_ISLAS = 0.2;
+    private static final int RADIO_ISLA = 5;
 
-    private static final int NUM_PLANEADORES = 1;
-    private static final int RADIO_X_PLANEADORES = 3;
-    private static final int RADIO_Y_PLANEADORES = 1;
-    private static final Map.Entry<Integer, Integer> DIRECCION_PLANEADORES = new AbstractMap.SimpleEntry<>(2, -3);
+    private static final int NUM_CANIONES = 4;
+    private AbstractMap.SimpleEntry<Integer, Integer>[] centrosPlaneadores = new AbstractMap.SimpleEntry[NUM_CANIONES];
 
 
     // Matriz con los valores de la generación actual
@@ -67,8 +65,10 @@ public class lifeSim {
 
     private void iniciar(){
 
+        int n_celulas = lifeSimGUI.TAMANIO_RETICULA / lifeSimGUI.FACTOR_CELULAS;
+
         // Inicializamos la generación actual
-        this.generacionActual = new int[lifeSimGUI.TAMANIO_RETICULA][lifeSimGUI.TAMANIO_RETICULA];
+        this.generacionActual = new int[n_celulas][n_celulas];
 
         // Creamos la primera generación
         switch (estadoInicial){
@@ -84,7 +84,10 @@ public class lifeSim {
         for (int i=0; i<generacionActual.length; i++){
             for (int j=0; j<generacionActual.length; j++) {
                 double rand = generadorRandu();
-                if (rand <= PROB_CELULAS_ALEATORIAS) generacionActual[i][j] = 1;
+
+                if (rand <= PROB_CELULAS_ALEATORIAS) {
+                    generacionActual[i][j] = 1;
+                }
             }
         }
     }
@@ -98,53 +101,51 @@ public class lifeSim {
         int estadoAnterior = generacionAnterior[i][j];
 
         // Evitamos procesar los planeadores
-        if (estadoAnterior != 2){
-            int vivas = 0;
+        if (generacionAnterior[i][j] >= 2) return generacionAnterior[i][j];
 
-            for (int k=i-1; k<=i+1; k++){
-                for (int z=j-1; z<=j+1; z++) {
+        int vivas = 0;
 
-                    // Comprobamos que no se sale de rango
-                    if (k >= 0 && z >= 0 && k < lifeSimGUI.TAMANIO_RETICULA && z < lifeSimGUI.TAMANIO_RETICULA){
+        for (int k=i-1; k<=i+1; k++){
+            for (int z=j-1; z<=j+1; z++) {
 
-                        // No contamos la celda i_j
-                        if (k != i || j != z){
+                // Comprobamos que no se sale de rango
+                if (k >= 0 && z >= 0 && k < generacionActual.length && z < generacionActual.length){
 
-                            int valor = generacionAnterior[k][z];
+                    // No contamos la celda i_j
+                    if (k != i || j != z){
 
-                            // Evitamos procesar los planeadores
-                            if (valor == 1){
-                                vivas++;
-                            }
+                        int valor = generacionAnterior[k][z];
+
+                        // Evitamos procesar los planeadores
+                        if (valor == 1){
+                            vivas++;
                         }
                     }
                 }
             }
-
-            // Por defecto está vacío
-            int nuevoEstado = 0;
-
-
-            if (estadoAnterior == 1){
-                // Viva con menos de 2 vecinas vivas -> muere || sobrepoblacion -> muere
-                if (vivas < 2 || vivas > 3) nuevoEstado = -1;
-
-                // Viva y con 2 o 3 vecinas vivas -> vive
-                else nuevoEstado = estadoAnterior;
-            }
-
-            // Punto vacío (murió una bacteria o no había ninguna) con 3 vecinas vivas -> nueva vida
-            else if (vivas == 3) nuevoEstado = 1;
-
-            return nuevoEstado;
         }
 
-        return estadoAnterior;
+        // Por defecto está vacío
+        int nuevoEstado = 0;
+
+
+        if (estadoAnterior == 1){
+            // Viva con menos de 2 vecinas vivas -> muere || sobrepoblacion -> muere
+            if (vivas < 2 || vivas > 3) nuevoEstado = -1;
+
+            // Viva y con 2 o 3 vecinas vivas -> vive
+            else nuevoEstado = estadoAnterior;
+        }
+
+        // Punto vacío (murió una bacteria o no había ninguna) con 3 vecinas vivas -> nueva vida
+        else if (vivas == 3) nuevoEstado = 1;
+
+        return nuevoEstado;
     }
 
     private void evolucionAleatorio(){
 
-        int[][] tempGen = new int[lifeSimGUI.TAMANIO_RETICULA][lifeSimGUI.TAMANIO_RETICULA];
+        int[][] tempGen = new int[generacionActual.length][generacionActual.length];
 
         for (int i=0; i<tempGen.length; i++){
             for (int j=0; j<tempGen.length; j++){
@@ -163,13 +164,15 @@ public class lifeSim {
      * @param j
      * @return
      */
-    private Map.Entry<Integer, Integer> centroDeLaIsla(ArrayList<Map.Entry<Integer, Integer>> centros, int i, int j, int radio){
+    private Map.Entry<Integer, Integer> centroDeLaIsla(ArrayList<Map.Entry<Integer, Integer>> centros, int i, int j, double radio){
 
         for (Map.Entry<Integer, Integer> centro : centros){
-            int diffFilas = centro.getKey() - i;
-            int diffColumnas = centro.getKey() - j;
-            int diff = diffFilas*diffFilas + diffColumnas*diffColumnas;
-            if (diff <= radio) return centro;
+            int diffFilas = Math.abs(centro.getKey() - i);
+            int diffColumnas = Math.abs(centro.getValue() - j);
+
+            if (diffFilas + diffColumnas <= 2){
+                return centro;
+            }
         }
         return null;
     }
@@ -180,16 +183,17 @@ public class lifeSim {
         ArrayList<Map.Entry<Integer, Integer>> centrosIslas = new ArrayList<>();
 
         // Generamos los centros de las islas
-        for (int i=0; i<generacionActual.length; i++){
-            for (int j=0; j<generacionActual.length; j++) {
-                double rand = generadorRandu();
-                if (rand <= PROB_NUM_ISLAS) {
-                    centrosIslas.add(new AbstractMap.SimpleEntry<>(i,j));
-                    generacionActual[i][j] = 1;
-                }
-            }
+        double num_centros = generacionActual.length * PROB_NUM_ISLAS;
+        int max = generacionActual.length * generacionActual.length;
+        for (int i=0; i<num_centros; i++){
+            int fila = (int) (generadorRandu() * max) / generacionActual.length;
+            int columna = (int) (generadorRandu() * max) / generacionActual.length;
+            generacionActual[fila][columna] = 1;
+            centrosIslas.add(new AbstractMap.SimpleEntry<>(fila, columna));
         }
 
+
+        // TODO Modificar funcion #centroIslas
         // Rellenamos alrededor de los centros de las islas
         for (int i=0; i<generacionActual.length; i++){
             for (int j=0; j<generacionActual.length; j++) {
@@ -203,50 +207,112 @@ public class lifeSim {
     }
     private void evolucionIslas(){
 
-    }
+        int[][] tempGen = new int[generacionActual.length][generacionActual.length];
 
-    private Map.Entry<Integer, Integer> centroDelPlaneador(ArrayList<Map.Entry<Integer, Integer>> centros, int i, int j, int radioX, int radioY){
-
-        for (Map.Entry<Integer, Integer> centro : centros){
-            int diffFilas = centro.getKey() - i;
-            int diffColumnas = centro.getKey() - j;
-            if (diffFilas < radioX && diffColumnas < radioY){
-                return centro;
+        for (int i=0; i<tempGen.length; i++){
+            for (int j=0; j<tempGen.length; j++){
+                tempGen[i][j] = vecindadVonNeumann(i, j, generacionActual);
             }
         }
-        return null;
+
+        // Guardamos la nueva generacion
+        generacionActual = tempGen;
+    }
+
+    private void pintaCanion(int col, int fila){
+
+        // Primer cuadrado
+        for (int i=0;i<2;i++){
+            for (int j=0; j<2; j++){
+                generacionActual[col+i][fila+j] = 1;
+            }
+        }
+        col += 1;
+
+        // Espacio de 8
+        col += 9;
+
+        // Pintamos la estructura rara de la derecha del cuadrado izquierdo
+        int filaCentro = fila+1;
+        int colCentro = col+3;
+
+        int filaInicio = fila - 2;
+        int colInicio = col;
+        for (int i=0; i<7; i++){
+            for (int j=0; j<7; j++){
+                int filaTemp = filaInicio + j;
+                int colTemp = colInicio + i;
+
+                // Evitamos pintar el centro
+                if (filaTemp != filaCentro || colTemp != colCentro){
+
+                    // Dibujamos el exterior del círculo
+                    double dst = Math.sqrt(Math.pow(filaTemp - filaCentro,2) + Math.pow(colTemp - colCentro,2));
+                    if (dst >= 2.5 && dst <= 3.5) generacionActual[colTemp][filaTemp] = 1;
+                }
+            }
+        }
+
+        // Añadimos los cambios del círculo
+        generacionActual[colCentro+1][filaCentro] = 1;
+        generacionActual[colCentro+4][filaCentro] = 1;
+        generacionActual[colCentro+1][filaCentro-3] = 0;
+        generacionActual[colCentro+1][filaCentro+3] = 0;
+
+        col += 10;
+
+        // Pintamos la cosa rara que está a la izquierda del cuadrado izquierdo
+        for (int i=0; i<2; i++){
+            for (int j=0; j<3; j++){
+                generacionActual[col+i][fila-j] = 1;
+            }
+        }
+        col += 2;
+        generacionActual[col][fila-3] = 1;
+        generacionActual[col][fila+1] = 1;
+
+        col += 2;
+        generacionActual[col][fila-3] = 1;
+        generacionActual[col][fila-4] = 1;
+        generacionActual[col][fila+1] = 1;
+        generacionActual[col][fila+2] = 1;
+
+        // Pintamos el espaciado
+        col += 10;
+        fila -= 1;
+
+        // Segundo cuadrado
+        for (int i=0;i<2;i++){
+            for (int j=0; j<2; j++){
+                generacionActual[col+i][fila-j] = 1;
+            }
+        }
     }
 
     private void inicializaCaniones(){
 
-        int n_cuad = lifeSimGUI.TAMANIO_RETICULA * lifeSimGUI.TAMANIO_RETICULA;
-        int n = lifeSimGUI.TAMANIO_RETICULA;
+        int n  =generacionActual.length;
+        int fila = n / 2 - (n/16);
 
-        // Generamos los centros de los planeadores
-        ArrayList<Map.Entry<Integer, Integer>> centros = new ArrayList<>(NUM_PLANEADORES);
-        for (int i=0; i<NUM_PLANEADORES; i++){
-            int centro = (int) (generadorRandu() * n_cuad);
-            int fila = centro / n;
-            int columna = centro % n;
-
-            centros.add(new AbstractMap.SimpleEntry<>(fila, columna));
-
-            generacionActual[fila][columna] = 2;
-        }
-
-        //  Rellenamos alrededor del planeador
-        for (int i=0; i<generacionActual.length; i++){
-            for (int j=0; j<generacionActual.length; j++) {
-                Map.Entry<Integer, Integer> centro = centroDelPlaneador(centros, i, j, RADIO_X_PLANEADORES, RADIO_Y_PLANEADORES);
-
-                if (centro != null){
-                    generacionActual[i][j] = 2;
-                }
-            }
+        int columna = 0;
+        for (int i = 0; i< NUM_CANIONES; i++){
+            pintaCanion(columna, fila);
+            columna += 45;
         }
     }
+
     private void evolucionCaniones(){
 
+        int[][] tempGen = new int[generacionActual.length][generacionActual.length];
+
+        for (int i=0; i<tempGen.length; i++){
+            for (int j=0; j<tempGen.length; j++){
+                tempGen[i][j] = vecindadVonNeumann(i, j, generacionActual);
+            }
+        }
+
+        // Guardamos la nueva generacion
+        generacionActual = tempGen;
     }
 
     public void evoluciona(){
@@ -257,7 +323,8 @@ public class lifeSim {
             switch (estadoInicial){
                 case ALEATORIO: evolucionAleatorio(); break;
                 case ISLAS: evolucionIslas(); break;
-                case CANIONES: evolucionCaniones(); break;
+                case CANIONES: evolucionCaniones();
+                    break;
             }
         }
 

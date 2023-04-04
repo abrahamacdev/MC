@@ -4,6 +4,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
+import java.util.Locale;
 
 public class lifeSimGUI {
 
@@ -13,11 +14,14 @@ public class lifeSimGUI {
     volatile JPanel panelReticula;
     JPanel panelOpciones;
 
-    public static final int TAMANIO_RETICULA = 300;
+    public static final int TAMANIO_RETICULA = 600;
     private static final int ALTO_OPCIONES = TAMANIO_RETICULA;
     private static final int ANCHO_OPCIONES = 350;
 
-    private static final int ALTO_BARRA_VENTANA = 37;
+    private static int ALTO_BARRA_VENTANA = -1;
+
+    // Cada conjunto de X*X celdas se corresponderán con la evolución de una sola célula
+    public static int FACTOR_CELULAS = 3;   // 3
 
     public static final double DESPLAZAMIENTO_GRAFICA = 0.3;
 
@@ -27,37 +31,46 @@ public class lifeSimGUI {
 
     private void pintarReticula(Graphics graphics){
 
-        int anchoPanel = panelReticula.getWidth();
-        int altoPanel = panelReticula.getHeight();
+        //int anchoPanel = panelReticula.getWidth();
+        //int altoPanel = panelReticula.getHeight();
 
-        BufferedImage bufferedImage = new BufferedImage(anchoPanel,altoPanel,BufferedImage.TYPE_INT_RGB);
+        int n = TAMANIO_RETICULA / FACTOR_CELULAS;
+
+        BufferedImage bufferedImage = new BufferedImage(TAMANIO_RETICULA,TAMANIO_RETICULA,BufferedImage.TYPE_INT_RGB);
         Graphics g = bufferedImage.getGraphics();
 
         // Pintamos el fondo
         g.setColor(Color.BLACK);
-        g.fillRect(0, 0, anchoPanel, altoPanel);
+        g.fillRect(0, 0, TAMANIO_RETICULA, TAMANIO_RETICULA);
 
         // Pintamos
         if (sim != null){
 
-            for (int i=0; i<altoPanel; i++){
-                for (int j = 0; j < anchoPanel; j++) {
+            try {
+                for (int i=0; i<n; i++){
+                    for (int j = 0; j < n; j++) {
 
-                    int estadoCelula = sim.getGeneracionActual()[i][j];
+                        int estadoCelula = sim.getGeneracionActual()[i][j];
 
-                    // Célula muerta
-                    if (estadoCelula == 0){
-                        g.setColor(Color.BLACK);
-                    }
-                    else {
+                        // Inexistente o célula muerta
+                        if (estadoCelula == 0 || estadoCelula == -1){
+                            g.setColor(Color.BLACK);
+                        }
                         // Célula viva
-                        g.setColor(Color.GREEN);
-                    }
+                        else if (estadoCelula == 1){
+                            g.setColor(Color.GREEN);
+                        }
+                        // Planeador
+                        else g.setColor(Color.BLUE);
 
-                    // Pintamos el cuadrado
-                    g.fillRect(i, j, i +1, j +1);
+                        // Pintamos el cuadrado
+                        g.fillRect(i*FACTOR_CELULAS, j*FACTOR_CELULAS, i + FACTOR_CELULAS, j +FACTOR_CELULAS);
+                    }
                 }
+            }catch (Exception e){
+                System.out.println(sim.getnGeneracionActual());
             }
+
         }
 
         graphics.drawImage(bufferedImage, 0, 0, panelReticula);
@@ -150,6 +163,9 @@ public class lifeSimGUI {
 
     public void crearVentana() {
 
+        // Establece el margen superior para los Jframes
+        comprobacionesPrevias();
+
         // Mostramos la retícula
         anadeReticula();
 
@@ -158,11 +174,16 @@ public class lifeSimGUI {
 
         // Generamos el simulador
         // TODO Eliminar
-        sim = new lifeSim(lifeSim.ESTADO_INICIAL.ALEATORIO, 300);
+            sim = new lifeSim(lifeSim.ESTADO_INICIAL.CANIONES, 1000);
 
         // Dibujamos
         // TODO ELiminar
         evolucionar();
+    }
+
+    public void comprobacionesPrevias(){
+        String OS = System.getProperty("os.name", "unknown").toLowerCase(Locale.ROOT);
+        ALTO_BARRA_VENTANA = OS.equals("win") ? 37 : 28;
     }
 
     public static void main(String[] args) {
