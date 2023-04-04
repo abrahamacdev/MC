@@ -40,6 +40,9 @@ public class lifeSim {
     // Nº total de generaciones
     private int numGeneraciones;
 
+    // Nº de bacterias vivas de la generación actual
+    private int[] historicoPoblacionActiva = null;
+
     // Estado con el que inicializamos el simulador
     private ESTADO_INICIAL estadoInicial;
 
@@ -54,6 +57,7 @@ public class lifeSim {
     public lifeSim(ESTADO_INICIAL estadoInicial, int numGeneraciones){
         this.numGeneraciones = numGeneraciones;
         this.estadoInicial = estadoInicial;
+        this.historicoPoblacionActiva = new int[numGeneraciones];
         iniciar();
     }
 
@@ -76,6 +80,8 @@ public class lifeSim {
             case ISLAS: inicializaIslas(); break;
             case CANIONES: inicializaCaniones(); break;
         }
+
+        actualizaHistoricoPoblacion();
     }
 
     private void inicializaAleatorio(){
@@ -99,9 +105,6 @@ public class lifeSim {
     public int vecindadVonNeumann(int i, int j, int[][] generacionAnterior){
 
         int estadoAnterior = generacionAnterior[i][j];
-
-        // Evitamos procesar los planeadores
-        if (generacionAnterior[i][j] >= 2) return generacionAnterior[i][j];
 
         int vivas = 0;
 
@@ -139,6 +142,8 @@ public class lifeSim {
 
         // Punto vacío (murió una bacteria o no había ninguna) con 3 vecinas vivas -> nueva vida
         else if (vivas == 3) nuevoEstado = 1;
+
+
 
         return nuevoEstado;
     }
@@ -248,7 +253,9 @@ public class lifeSim {
 
                     // Dibujamos el exterior del círculo
                     double dst = Math.sqrt(Math.pow(filaTemp - filaCentro,2) + Math.pow(colTemp - colCentro,2));
-                    if (dst >= 2.5 && dst <= 3.5) generacionActual[colTemp][filaTemp] = 1;
+                    if (dst >= 2.5 && dst <= 3.5) {
+                        generacionActual[colTemp][filaTemp] = 1;
+                    }
                 }
             }
         }
@@ -326,10 +333,30 @@ public class lifeSim {
                 case CANIONES: evolucionCaniones();
                     break;
             }
+
+            actualizaHistoricoPoblacion();
         }
 
         nGeneracionActual++;
     }
+
+    private void actualizaHistoricoPoblacion(){
+
+        // Contamos las células vivas
+        for (int i=0; i<generacionActual.length; i++){
+            for (int j=0; j<generacionActual.length; j++) {
+                if (generacionActual[i][j] == 1) historicoPoblacionActiva[nGeneracionActual]++;
+            }
+        }
+    }
+
+
+    public int getNumGeneraciones() {
+        return numGeneraciones;
+    }
+
+
+    public int[] getHistoricoPoblacionActiva(){ return historicoPoblacionActiva; }
 
     public boolean haTerminadoEvolucion(){
         return nGeneracionActual == numGeneraciones;

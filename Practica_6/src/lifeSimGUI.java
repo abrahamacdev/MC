@@ -1,10 +1,14 @@
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.event.ChangeEvent;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
+import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.Map;
 
 public class lifeSimGUI {
 
@@ -13,6 +17,14 @@ public class lifeSimGUI {
 
     volatile JPanel panelReticula;
     JPanel panelOpciones;
+
+    JSpinner spinnerGeneraciones;
+    JComboBox comboBoxEstadoInicial;
+    JButton botonSimular;
+
+    JPanel panelGraficaPoblacion;
+
+    private volatile boolean simulando = false;
 
     public static final int TAMANIO_RETICULA = 600;
     private static final int ALTO_OPCIONES = TAMANIO_RETICULA;
@@ -57,11 +69,7 @@ public class lifeSimGUI {
                             g.setColor(Color.BLACK);
                         }
                         // Célula viva
-                        else if (estadoCelula == 1){
-                            g.setColor(Color.GREEN);
-                        }
-                        // Planeador
-                        else g.setColor(Color.BLUE);
+                        else g.setColor(Color.GREEN);
 
                         // Pintamos el cuadrado
                         g.fillRect(i*FACTOR_CELULAS, j*FACTOR_CELULAS, i + FACTOR_CELULAS, j +FACTOR_CELULAS);
@@ -74,6 +82,63 @@ public class lifeSimGUI {
         }
 
         graphics.drawImage(bufferedImage, 0, 0, panelReticula);
+    }
+
+    private void pintarPoblacion(Graphics graphics){
+
+        BufferedImage bufferedImage = new BufferedImage(panelGraficaPoblacion.getWidth(), panelGraficaPoblacion.getHeight(),BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = (Graphics2D) bufferedImage.getGraphics();
+
+        int minWidth = 5;
+        int minHeight = 5;
+
+        int maxHeight = panelGraficaPoblacion.getHeight();
+        int maxWidth = panelGraficaPoblacion.getWidth();
+
+        // Pintamos el fondo
+        g.setColor(Color.white);
+        g.fillRect(0, 0, maxWidth, maxHeight);
+
+        // Evitamos que quede muy pegado
+        maxHeight -= minHeight;
+        maxWidth -= minWidth;
+
+        g.setColor(Color.BLACK);
+        g.setStroke(new BasicStroke(2));
+
+        // Pintamos
+        if (sim != null && sim.getnGeneracionActual() > 0){
+
+            try {
+
+                // Suponemos que el número de células activas nunca va a ser superior a 1/6 del total
+                // de posibles células activas (nos ayuda a hacer zoom en la gráfica).
+                int maxPoblacionActiva = (int) Math.pow(TAMANIO_RETICULA / FACTOR_CELULAS, 2) / 6;
+                int maxGeneraciones = sim.getNumGeneraciones();
+
+                int[] historicoPoblacion = sim.getHistoricoPoblacionActiva();
+
+                for (int i=0; i<sim.getnGeneracionActual(); i++){
+
+                    int nGenActual = i;
+                    int pobActual = historicoPoblacion[i];
+
+                    int nGenSiguiente = i+1;
+                    int pobSiguiente = historicoPoblacion[i+1];
+
+                    int xActual = nGenActual * maxWidth / maxGeneraciones;
+                    int yActual = maxHeight - pobActual * maxHeight / maxPoblacionActiva;
+
+                    int xSiguiente = nGenSiguiente * maxWidth / maxGeneraciones;
+                    int ySiguiente = maxHeight - pobSiguiente * maxHeight / maxPoblacionActiva;
+
+                    g.drawLine(xActual + minWidth, yActual+minHeight, xSiguiente+minWidth, ySiguiente+minHeight);
+                }
+
+            }catch (Exception e){}
+        }
+
+        graphics.drawImage(bufferedImage, 0, 0, panelGraficaPoblacion);
     }
 
     private void anadeReticula(){
@@ -113,20 +178,7 @@ public class lifeSimGUI {
         frameReticula.setVisible(true);
     }
 
-    private void anadePanelOpciones(){
-
-        // Frame donde meter la reticula
-        frameOpciones = new JFrame("Opciones");
-        frameOpciones.getContentPane().setLayout(new GridLayout(1,1));
-        frameOpciones.setMinimumSize(new Dimension(ANCHO_OPCIONES, ALTO_OPCIONES));
-
-        // Panel donde meteremos la gráfica
-        panelOpciones = new JPanel();
-        panelOpciones.setMinimumSize(new Dimension(ANCHO_OPCIONES, ALTO_OPCIONES));
-        panelOpciones.setBackground(Color.RED);
-        frameOpciones.add(panelOpciones);
-
-
+    private AbstractMap.SimpleEntry<Integer, Integer> posicionarPanelOpciones(){
         // Calculamos el cachito de la gráfica que esta "por la derecha del centro"
         Dimension windowSize = frameReticula.getSize();
         int offsetXReticula = (int) (frameReticula.getWidth() * DESPLAZAMIENTO_GRAFICA);
@@ -139,11 +191,113 @@ public class lifeSimGUI {
         int dxOpciones = centerPoint.x + porLaDerecha;
         int dyOpciones = centerPoint.y - windowSize.height / 2;
 
+        return new AbstractMap.SimpleEntry<>(dxOpciones, dyOpciones);
+    }
+
+    private void anadirBotonesOpciones(){
+
+        JPanel panelBotones = new JPanel();
+        panelBotones.setLayout(new GridLayout(8, 1));
+
+        // Para margen
+        panelBotones.add(new JLabel(""));
+
+        JLabel labelGeneraciones = new JLabel("Numero de generaciones");
+        labelGeneraciones.setBorder(new EmptyBorder(10, 0, 0, 0));
+
+        spinnerGeneraciones = new JSpinner();
+        spinnerGeneraciones.setValue(600);
+        spinnerGeneraciones.addChangeListener((event) -> {
+            if ((Integer) spinnerGeneraciones.getValue() <= 0) spinnerGeneraciones.setValue(1);
+        });
+
+        // Añadimos el label y el spinner de las generaciones
+        panelBotones.add(labelGeneraciones);
+        panelBotones.add(spinnerGeneraciones);
+
+        // Para margen
+        panelBotones.add(new JLabel(""));
+
+        // Añadimos el label y el selector del estado inicial
+        JLabel labelEstadoInicial = new JLabel("Estado inicial");
+        String[] opcionesEstadoInicial = new String[]{"Aleatorio", "Islas", "Cañones Planeadores"};
+        comboBoxEstadoInicial = new JComboBox(opcionesEstadoInicial);
+        panelBotones.add(labelEstadoInicial);
+        panelBotones.add(comboBoxEstadoInicial);
+
+        // Para margen
+        panelBotones.add(new JLabel(""));
+
+        // Añadimos el boton para comenzar la simulacion
+        botonSimular = new JButton("Simular");
+        botonSimular.addActionListener(e -> {
+
+            if (!simulando){
+                int nGeneraciones = (int) spinnerGeneraciones.getValue();
+                lifeSim.ESTADO_INICIAL estadoInicial = lifeSim.ESTADO_INICIAL.values()[comboBoxEstadoInicial.getSelectedIndex()];
+
+                sim = new lifeSim(estadoInicial, nGeneraciones);
+
+                botonSimular.setText("Parar");
+
+                simulando = true;
+
+                evolucionar();
+            }
+            else {
+                simulando = false;
+            }
+        });
+
+        panelBotones.add(botonSimular);
+        panelOpciones.add(panelBotones);
+
+    }
+    private void anadirGraficaPoblacion(){
+
+        JPanel panelTemp = new JPanel();
+        panelTemp.setBorder(new EmptyBorder(20, 0,0 ,0));
+        panelTemp.setLayout(new GridLayout(1,1));
+
+        panelGraficaPoblacion = new JPanel(){
+            @Override
+            public void paint(Graphics g) {
+                pintarPoblacion(g);
+            }
+        };
+
+        panelTemp.add(panelGraficaPoblacion);
+        panelOpciones.add(panelTemp);
+    }
+
+    private void anadePanelOpciones(){
+
+        // Frame donde meter la reticula
+        frameOpciones = new JFrame("Opciones");
+        frameOpciones.getContentPane().setLayout(new GridLayout(1,1));
+        frameOpciones.setMinimumSize(new Dimension(ANCHO_OPCIONES, ALTO_OPCIONES));
+
+        // Panel donde meteremos la gráfica
+        panelOpciones = new JPanel();
+        panelOpciones.setLayout(new GridLayout(2, 1));
+        panelOpciones.setBorder(new EmptyBorder(10, 20, 10 ,20));
+        panelOpciones.setMinimumSize(new Dimension(ANCHO_OPCIONES, ALTO_OPCIONES));
+        frameOpciones.add(panelOpciones);
+
+        // Calculamos la posicion del panel
+        AbstractMap.SimpleEntry<Integer, Integer> posicionPanel = posicionarPanelOpciones();
+
+        // Añadimos los botones para las opciones
+        anadirBotonesOpciones();
+
+        // Añadimos la gráfica con la evolución de la población
+        anadirGraficaPoblacion();
+
         // Mostramos la reticula
         frameOpciones.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frameOpciones.setResizable(false);
         //frameReticula.setLocationRelativeTo(null);
-        frameOpciones.setLocation(dxOpciones, dyOpciones);
+        frameOpciones.setLocation(posicionPanel.getKey(), posicionPanel.getValue());
         frameOpciones.pack();
         frameOpciones.setVisible(true);
     }
@@ -152,11 +306,36 @@ public class lifeSimGUI {
 
         // Cada 100ms pintará una nueva generación
         timer = new Timer(10, actionEvent -> {
-            if (!sim.haTerminadoEvolucion()){
+            if (!sim.haTerminadoEvolucion() && simulando){
                 sim.evoluciona();
                 panelReticula.repaint();
+                panelGraficaPoblacion.repaint();
             }
-            else timer.stop();
+            // Dejamos simulación final
+            else if (sim.haTerminadoEvolucion()){
+
+                // Habilitamos de nuevo el boton para simular
+                botonSimular.setText("Simular");
+                timer.stop();
+
+                // Reiniciamos la retícula
+                sim = null;
+                simulando = false;
+            }
+            // Simulacion parada. Eliminamos toodo
+            else {
+
+                // Habilitamos de nuevo el boton para simular
+                botonSimular.setText("Simular");
+                timer.stop();
+
+                // Reiniciamos la retícula
+                sim = null;
+                simulando = false;
+                panelReticula.repaint();
+                panelGraficaPoblacion.repaint();
+
+            }
         });
         timer.start();
     }
@@ -171,14 +350,6 @@ public class lifeSimGUI {
 
         // Mostramos las opciones
         anadePanelOpciones();
-
-        // Generamos el simulador
-        // TODO Eliminar
-            sim = new lifeSim(lifeSim.ESTADO_INICIAL.CANIONES, 1000);
-
-        // Dibujamos
-        // TODO ELiminar
-        evolucionar();
     }
 
     public void comprobacionesPrevias(){
