@@ -27,60 +27,20 @@ public class lifeSimGUI {
 
     private volatile boolean simulando = false;
 
-    public static final int TAMANIO_RETICULA = 600;
+    public static final int TAMANIO_RETICULA = 600; // 600
     private static final int ALTO_OPCIONES = TAMANIO_RETICULA;
     private static final int ANCHO_OPCIONES = 350;
 
     private static int ALTO_BARRA_VENTANA = -1;
 
     // Cada conjunto de X*X celdas se corresponderán con la evolución de una sola célula
-    public static int FACTOR_CELULAS = 4;   // 3
+    public static int FACTOR_CELULAS = 2;   // 4
 
     public static final double DESPLAZAMIENTO_GRAFICA = 0.3;
 
     private volatile lifeSim sim;
 
     private volatile Timer timer;
-
-    private Color coloresCurvas[] = new Color[]{Color.RED, Color.BLUE, Color.GREEN};
-
-
-    private Color value2Color(float c){
-        float minHue = 120f/255; //corresponds to green
-        float maxHue = 0; //corresponds to red
-        float hue = c*maxHue + (1-c)*minHue;
-        return new Color(Color.HSBtoRGB(hue, 1, 0.5f));
-    }
-
-    private float normaliza(float v, float min, float max){
-        float norm = (v - min) / (max - min);
-
-        return Math.max(norm, min);
-    }
-
-    private void pintaGeneracion(float[] media, Color color, int i, Graphics2D g,
-                                 int maxHeight, int maxWidth, int minHeight, int minWidth,
-                                 int maxGeneraciones){
-
-        float rangoMinValores = 0.2f;
-        float rangoMaxValores = 0.5f;
-
-        g.setColor(color);
-
-        int nGenActual = i;
-        int pobActual =  (int) (normaliza(media[i], rangoMinValores, rangoMaxValores) * maxHeight);
-
-        int nGenSiguiente = i+1;
-        int pobSiguiente = (int) (normaliza(media[i+1], rangoMinValores, rangoMaxValores) * maxHeight);
-
-        int xActual = nGenActual * maxWidth / maxGeneraciones;
-        int yActual = maxHeight - pobActual;
-
-        int xSiguiente = nGenSiguiente * maxWidth / maxGeneraciones;
-        int ySiguiente = maxHeight - pobSiguiente;
-
-        g.drawLine(xActual + minWidth, yActual+minHeight, xSiguiente+minWidth, ySiguiente+minHeight);
-    }
 
     private void pintarReticula(Graphics graphics){
 
@@ -93,7 +53,7 @@ public class lifeSimGUI {
         Graphics g = bufferedImage.getGraphics();
 
         // Pintamos el fondo
-        g.setColor(Color.BLACK);
+        g.setColor(Color.WHITE);
         g.fillRect(0, 0, TAMANIO_RETICULA, TAMANIO_RETICULA);
 
         // Pintamos
@@ -101,16 +61,23 @@ public class lifeSimGUI {
 
             try {
 
-                float a[][][] = sim.getA();
+                byte gen[][] = sim.getActualGen();
 
                 for (int i=0; i<n; i++){
                     for (int j = 0; j < n; j++) {
 
+                        byte v = gen[i][j];
+
                         // Establecemos el color
-                        g.setColor(value2Color(a[i][j][sim.getQ()]));
+                        if (v == 1){
+                            g.setColor(Color.black);
+                        }else {
+                            g.setColor(Color.white);
+                        }
 
                         // Pintamos el cuadrado
-                        g.fillRect(i*FACTOR_CELULAS, j*FACTOR_CELULAS, i + FACTOR_CELULAS, j +FACTOR_CELULAS);
+                        //g.fillRect(i*FACTOR_CELULAS, j*FACTOR_CELULAS, i + FACTOR_CELULAS, j +FACTOR_CELULAS);
+                        g.drawOval(i*FACTOR_CELULAS, j*FACTOR_CELULAS, FACTOR_CELULAS, FACTOR_CELULAS);
                     }
                 }
             }catch (Exception e){
@@ -154,7 +121,7 @@ public class lifeSimGUI {
                 int maxPoblacionActiva =  1;
                 int maxGeneraciones = sim.getNumGeneraciones();
 
-                float[] historicoA = sim.getMediaPoblacionA();
+                /*float[] historicoA = sim.getMediaPoblacionA();
                 float[] historicoB = sim.getMediaPoblacionB();
                 float[] historicoC = sim.getMediaPoblacionC();
 
@@ -172,6 +139,8 @@ public class lifeSimGUI {
                     pintaGeneracion(historicoC, coloresCurvas[2], i, g, maxHeight, maxWidth,
                             minHeight, minWidth, maxGeneraciones);
                 }
+
+                 */
 
             }catch (Exception e){}
         }
@@ -285,8 +254,8 @@ public class lifeSimGUI {
                 int nGeneraciones = (int) spinnerGeneraciones.getValue();
                 //lifeSim.ESTADO_INICIAL estadoInicial = lifeSim.ESTADO_INICIAL.values()[comboBoxEstadoInicial.getSelectedIndex()];
 
-                //sim = new lifeSim(estadoInicial, nGeneraciones);
-                sim = new lifeSim(nGeneraciones);
+                sim = new lifeSim(1000, false, 1, 0.2, 0.25, 2);
+                //sim = new lifeSim(nGeneraciones);
 
                 simulando = true;
 
@@ -402,5 +371,8 @@ public class lifeSimGUI {
 
     public static void main(String[] args) {
         new lifeSimGUI().crearVentana();
+
+        /*lifeSim s = new lifeSim(10, true, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 1, 1);
+        while (!s.haTerminadoEvolucion())s.evoluciona();*/
     }
 }
