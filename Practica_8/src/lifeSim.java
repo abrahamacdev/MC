@@ -1,4 +1,5 @@
-import java.util.Arrays;
+import java.awt.*;
+import java.util.HashSet;
 
 public class lifeSim {
 
@@ -18,8 +19,58 @@ public class lifeSim {
     private int numGeneraciones;
 
     private double Ps, Pm, Pp;
-    private int PH, NP;
+    private int PH = 0, NP;
 
+    private static int N_CELULAS = lifeSimGUI.TAMANIO_RETICULA / lifeSimGUI.FACTOR_CELULAS;
+
+    public static class ParametrosEscenario {
+
+        public double Ps, Pm, Pp;
+        public int NP;
+
+        public HashSet<Point> celulasIniciales = new HashSet<>();
+
+        public static ParametrosEscenario[] ESCENARIOS_INICIALES = getEscenariosIniciales();
+
+        public ParametrosEscenario(double ps, double pm, double pp, int NP) {
+            this.Ps = ps;
+            this.Pm = pm;
+            this.Pp = pp;
+            this.NP = NP;
+        }
+
+        public ParametrosEscenario(double ps, double pm, double pp, int NP, HashSet<Point> celulasIniciales) {
+            this.Ps = ps;
+            this.Pm = pm;
+            this.Pp = pp;
+            this.NP = NP;
+            this.celulasIniciales = celulasIniciales;
+        }
+
+        private static ParametrosEscenario[] getEscenariosIniciales(){
+
+            int n_celulas = lifeSimGUI.TAMANIO_RETICULA / lifeSimGUI.FACTOR_CELULAS;
+            int centro = (n_celulas-1) / 2;
+
+            ParametrosEscenario escenarioA = new ParametrosEscenario(1.0, 0.2, 0.25, 1);
+            escenarioA.celulasIniciales.add(new Point(centro, centro));
+            escenarioA.celulasIniciales.add(new Point(centro+1,  centro));
+            escenarioA.celulasIniciales.add(new Point(centro+2,  centro));
+            escenarioA.celulasIniciales.add(new Point(centro-1,  centro));
+
+            ParametrosEscenario escenarioB = new ParametrosEscenario(1.0, 0.8, 0.25, 1);
+            escenarioB.celulasIniciales.add(new Point(centro, centro));
+            escenarioB.celulasIniciales.add(new Point(centro+5, centro-5));
+
+            ParametrosEscenario escenarioC = new ParametrosEscenario(1.0, 0.2, 0.25, 2);
+            escenarioC.celulasIniciales.add(new Point(centro, centro));
+
+            ParametrosEscenario escenarioD = new ParametrosEscenario(1.0, 0.8, 0.25, 2);
+            escenarioD.celulasIniciales.add(new Point(centro, centro));
+
+            return new ParametrosEscenario[]{escenarioA, escenarioB, escenarioC, escenarioD};
+        }
+    }
 
     // Necesario para el generador aleatorio
     private static long xGenerador_Randu = 1;
@@ -28,68 +79,42 @@ public class lifeSim {
         xGenerador_Randu = seed;
     }
 
-    public lifeSim(int numGeneraciones, boolean escenarioPersonalizado, double Ps, double Pm, double Pp, int NP){
-        this.numGeneraciones = numGeneraciones;
-        this.Ps = Ps;
-        this.Pm = Pm;
-        this.Pp = Pp;
-        this.PH = 0;
-        this.NP = NP;
+    public lifeSim(int numGeneraciones, int escenario){
 
-        iniciar(escenarioPersonalizado);
+        ParametrosEscenario parametrosEscenario = ParametrosEscenario.ESCENARIOS_INICIALES[escenario];
+        init(numGeneraciones, parametrosEscenario);
     }
 
+    public lifeSim(int numGeneraciones, ParametrosEscenario parametrosEscenario){
+        init(numGeneraciones, parametrosEscenario);
+    }
 
+    private void init(int numGeneraciones, ParametrosEscenario parametrosEscenario){
+
+        // Inicializamos los parámetros del simulador
+        this.numGeneraciones = numGeneraciones;
+        this.Ps = parametrosEscenario.Ps;
+        this.Pm = parametrosEscenario.Pm;
+        this.Pp = parametrosEscenario.Pp;
+        this.NP = parametrosEscenario.NP;
+
+        // Inicializamos la generación actual
+        this.generaciones = new byte[2][N_CELULAS][N_CELULAS];
+
+        // Colocamos las primeras células vivas en base a las plantillas
+        inicializaCancerEscenario(parametrosEscenario);
+    }
 
     private float generadorRandu(){
         xGenerador_Randu = (((long) Math.pow(2, 16)) + 3) * xGenerador_Randu % ((long) Math.pow(2, 31));
         return xGenerador_Randu / (float) Math.pow(2, 31);
     }
 
-    private void iniciar(boolean escenarioPersonalizado){
+    private void inicializaCancerEscenario(ParametrosEscenario parametrosEscenario){
 
-        int n_celulas = lifeSimGUI.TAMANIO_RETICULA / lifeSimGUI.FACTOR_CELULAS;
-
-        // Inicializamos la generación actual
-        this.generaciones = new byte[2][n_celulas][n_celulas];
-
-        // Creamos la primera generación
-        inicializaCancer(escenarioPersonalizado);
-    }
-
-    private void inicializaCancer(boolean escenarioPersonalizado){
-
-        int n_celulas = lifeSimGUI.TAMANIO_RETICULA / lifeSimGUI.FACTOR_CELULAS;
-        int centro = (n_celulas-1) / 2;
-
-        // Pintar cuadrado
-        if (escenarioPersonalizado){
-
-            int[] x_s = new int[4];
-            int[] y_s = new int[4];
-
-            // Calculamos las posiciones de 4 células juntas formando un cuadrado en el centro de la retícula
-            int indx = 0;
-            for (int i=0; i<2; i++){
-                for (int j=0; j<2; j++) {
-                    x_s[indx] = centro + i;
-                    y_s[indx] = centro + j;
-                    indx++;
-                }
-
-            }
-
-            // Situamos las 4 células en la retícula
-            for (int i=0; i<4; i++){
-                this.generaciones[p][x_s[i]][y_s[i]] = 1;
-            }
+        for (Point punto : parametrosEscenario.celulasIniciales){
+            this.generaciones[p][punto.x][punto.y] = 1;
         }
-
-        // Inicializar con punto en el medio
-        else {
-            this.generaciones[p][centro][centro] = 1;
-        }
-
     }
 
     /**

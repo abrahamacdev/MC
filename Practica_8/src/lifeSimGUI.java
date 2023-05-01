@@ -1,14 +1,11 @@
 import javax.swing.*;
+import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
-import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.event.*;
 import java.awt.image.BufferedImage;
-import java.util.AbstractMap;
-import java.util.Arrays;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 public class lifeSimGUI {
 
@@ -17,6 +14,8 @@ public class lifeSimGUI {
 
     volatile JPanel panelReticula;
 
+    volatile JPanel panelSeleccionReticula;
+
     volatile JPanel panelGraficaPoblacion;
 
     JPanel panelOpciones;
@@ -24,23 +23,40 @@ public class lifeSimGUI {
     JSpinner spinnerGeneraciones;
     JButton botonSimular;
 
+    JSpinner spinnerPs;
+    JSpinner spinnerPm;
+    JSpinner spinnerPp;
+    JSpinner spinnerNP;
 
-    private volatile boolean simulando = false;
+    JComboBox<String> comboBoxEscenarios;
 
-    public static final int TAMANIO_RETICULA = 600; // 600
+    private boolean mostrandoGrillaSeleccion = false;
+
+
+
+    public static final int TAMANIO_RETICULA = 900; // 600
     private static final int ALTO_OPCIONES = TAMANIO_RETICULA;
     private static final int ANCHO_OPCIONES = 350;
 
     private static int ALTO_BARRA_VENTANA = -1;
 
     // Cada conjunto de X*X celdas se corresponderán con la evolución de una sola célula
-    public static int FACTOR_CELULAS = 2;   // 4
+    public static int FACTOR_CELULAS = 10;   // 4
 
     public static final double DESPLAZAMIENTO_GRAFICA = 0.3;
 
-    private volatile lifeSim sim;
+
+    private static final int GENERACIONES_INICIALES = 600;
+
+    private volatile lifeSim sim = new lifeSim(GENERACIONES_INICIALES, 0);
 
     private volatile Timer timer;
+
+    private HashSet<Point> setPuntosReticula = new HashSet<>();
+
+    private volatile boolean simulando = false;
+
+
 
     private void pintarReticula(Graphics graphics){
 
@@ -61,7 +77,7 @@ public class lifeSimGUI {
 
             try {
 
-                byte gen[][] = sim.getActualGen();
+                byte[][] gen = sim.getActualGen();
 
                 for (int i=0; i<n; i++){
                     for (int j = 0; j < n; j++) {
@@ -76,8 +92,9 @@ public class lifeSimGUI {
                         }
 
                         // Pintamos el cuadrado
-                        //g.fillRect(i*FACTOR_CELULAS, j*FACTOR_CELULAS, i + FACTOR_CELULAS, j +FACTOR_CELULAS);
-                        g.drawOval(i*FACTOR_CELULAS, j*FACTOR_CELULAS, FACTOR_CELULAS, FACTOR_CELULAS);
+                        g.fillRect(i*FACTOR_CELULAS, j*FACTOR_CELULAS, i + FACTOR_CELULAS, j +FACTOR_CELULAS);
+                        //g.drawOval(i*FACTOR_CELULAS, j*FACTOR_CELULAS, FACTOR_CELULAS, FACTOR_CELULAS);
+                        //g.drawRect(i*FACTOR_CELULAS, j*FACTOR_CELULAS, FACTOR_CELULAS, FACTOR_CELULAS);
                     }
                 }
             }catch (Exception e){
@@ -87,6 +104,50 @@ public class lifeSimGUI {
         }
 
         graphics.drawImage(bufferedImage, 0, 0, panelReticula);
+    }
+
+    private void pintarSeleccionReticula(Graphics graphics){
+
+        int n = TAMANIO_RETICULA / FACTOR_CELULAS;
+
+        BufferedImage bufferedImage = new BufferedImage(TAMANIO_RETICULA,TAMANIO_RETICULA,BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = (Graphics2D) bufferedImage.getGraphics();
+
+        int anchoPanel = panelSeleccionReticula.getWidth();
+        int altoPanel = panelSeleccionReticula.getHeight();
+
+        // Pintamos el fondo
+        g.setColor(Color.white);
+        g.fillRect(0, 0, TAMANIO_RETICULA, TAMANIO_RETICULA);
+
+        // Cambiamos el color para pintar
+        g.setColor(Color.black);
+
+        // Pintamos los cuadrados elegidos
+        for (Point punto : setPuntosReticula){
+
+            int x1 = punto.x * FACTOR_CELULAS;
+            int y1 = punto.y * FACTOR_CELULAS;
+
+            g.fillRect(x1, y1, FACTOR_CELULAS, FACTOR_CELULAS);
+        }
+
+        // Pintamos las líneas de la cuadrícula
+        int startX = 0;
+        int startY = 0;
+        int endX = altoPanel;
+        int endY = anchoPanel;
+        int x = startX;
+        int y = startY;
+        while (x <= endX){
+            g.drawLine(x, startY, x, endY);
+            g.drawLine(startX, y, endX, y);
+
+            x += FACTOR_CELULAS;
+            y += FACTOR_CELULAS;
+        }
+
+        graphics.drawImage(bufferedImage, 0, 0, panelSeleccionReticula);
     }
 
     private void pintarPoblacion(Graphics graphics){
@@ -148,6 +209,75 @@ public class lifeSimGUI {
         graphics.drawImage(bufferedImage, 0, 0, panelGraficaPoblacion);
     }
 
+    private void cambiaEstadoReticula(boolean ponerGrillaSeleccion){
+
+        // Ponemos la grilla para elegir las células activas
+        if (ponerGrillaSeleccion){
+
+            // Eliminamos la reticula para meter la selección reticula
+            frameReticula.getContentPane().removeAll();
+
+            // Panel para mostrar la retícula con lineas para elegir los puntos iniciales
+            panelSeleccionReticula = new JPanel(){
+                @Override
+                public void paint(Graphics g) {
+                    pintarSeleccionReticula(g);
+                }
+            };
+            panelSeleccionReticula.setMinimumSize(new Dimension(TAMANIO_RETICULA+10, TAMANIO_RETICULA));
+            panelSeleccionReticula.addMouseListener(new MouseListener() {
+                @Override
+                public void mouseClicked(MouseEvent mouseEvent) {
+
+                    if (!simulando && comboBoxEscenarios.getSelectedIndex() > 3){
+                        Point localizacionMouse = mouseEvent.getPoint();
+                        Point puntoElegido = new Point();
+
+                        puntoElegido.x = localizacionMouse.x / FACTOR_CELULAS;
+                        puntoElegido.y = localizacionMouse.y / FACTOR_CELULAS;
+
+                        // Desmarcamos el punto
+                        if (setPuntosReticula.contains(puntoElegido)){
+                            setPuntosReticula.remove(puntoElegido);
+                        }
+                        // Lo marcamos
+                        else {
+                            // GUardamos el punto
+                            setPuntosReticula.add(puntoElegido);
+                        }
+                        panelSeleccionReticula.repaint();
+                    }
+                }
+                @Override
+                public void mousePressed(MouseEvent mouseEvent) {}
+
+                @Override
+                public void mouseReleased(MouseEvent mouseEvent) {}
+
+                @Override
+                public void mouseEntered(MouseEvent mouseEvent) {}
+
+                @Override
+                public void mouseExited(MouseEvent mouseEvent) {}
+            });
+            frameReticula.add(panelSeleccionReticula);
+        }
+
+        // Mostramos la grilla con las posiciones iniciales
+        else {
+            // Eliminamos la seleccion reticula para meter la reticula
+            frameReticula.getContentPane().removeAll();
+            panelReticula = new JPanel(){
+                @Override
+                public void paint(Graphics g) {
+                    pintarReticula(g);
+                }
+            };
+            frameReticula.add(panelReticula);
+        }
+        frameReticula.revalidate();
+    }
+
     private void anadeReticula(){
 
         // Frame donde meter la reticula
@@ -162,8 +292,52 @@ public class lifeSimGUI {
                 pintarReticula(g);
             }
         };
-        panelReticula.setBackground(Color.BLUE);
         frameReticula.add(panelReticula);
+
+        // Panel donde dejaremos elegir los puntos iniciales
+        /*panelSeleccionReticula = new JPanel(){
+            @Override
+            public void paint(Graphics g) {
+                pintarSeleccionReticula(g);
+            }
+        };
+        panelSeleccionReticula.setMinimumSize(new Dimension(TAMANIO_RETICULA+10, TAMANIO_RETICULA));
+        panelSeleccionReticula.addMouseListener(new MouseListener() {
+            @Override
+            public void mouseClicked(MouseEvent mouseEvent) {
+
+                if (!simulando && comboBoxEscenarios.getSelectedIndex() > 3){
+                    Point localizacionMouse = mouseEvent.getPoint();
+                    Point puntoElegido = new Point();
+
+                    puntoElegido.x = localizacionMouse.x / FACTOR_CELULAS;
+                    puntoElegido.y = localizacionMouse.y / FACTOR_CELULAS;
+
+                    // Desmarcamos el punto
+                    if (setPuntosReticula.contains(puntoElegido)){
+                        setPuntosReticula.remove(puntoElegido);
+                    }
+                    // Lo marcamos
+                    else {
+                        // GUardamos el punto
+                        setPuntosReticula.add(puntoElegido);
+                    }
+                    panelSeleccionReticula.repaint();
+                }
+            }
+            @Override
+            public void mousePressed(MouseEvent mouseEvent) {}
+
+            @Override
+            public void mouseReleased(MouseEvent mouseEvent) {}
+
+            @Override
+            public void mouseEntered(MouseEvent mouseEvent) {}
+
+            @Override
+            public void mouseExited(MouseEvent mouseEvent) {}
+        });
+        frameReticula.add(panelSeleccionReticula);*/
 
 
         // Colocamos el frame de la gráfica bien
@@ -178,11 +352,15 @@ public class lifeSimGUI {
 
         // Mostramos la reticula
         frameReticula.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frameReticula.setResizable(false);
+        frameReticula.setResizable(true);
         //frameReticula.setLocationRelativeTo(null);
         frameReticula.setLocation(dx-offsetX, dy);
         frameReticula.pack();
         frameReticula.setVisible(true);
+    }
+
+    private void gestionarClickReticula(){
+
     }
 
     private void anadirGraficaPoblacion(){
@@ -221,15 +399,17 @@ public class lifeSimGUI {
     private void anadirBotonesOpciones(){
 
         JPanel panelBotones = new JPanel();
-        panelBotones.setLayout(new GridLayout(8, 1));
+        panelBotones.setLayout(new GridLayout(18, 1));
+
+        EmptyBorder bordeIzquierdoJLabels = new EmptyBorder(10, 0, 0, 0);
 
         // Para margen
         panelBotones.add(new JLabel(""));
 
         JLabel labelGeneraciones = new JLabel("Numero de generaciones");
-        labelGeneraciones.setBorder(new EmptyBorder(10, 0, 0, 0));
+        labelGeneraciones.setBorder(bordeIzquierdoJLabels);
         spinnerGeneraciones = new JSpinner();
-        spinnerGeneraciones.setValue(600);
+        spinnerGeneraciones.setValue(GENERACIONES_INICIALES);
         spinnerGeneraciones.addChangeListener((event) -> {
             if ((Integer) spinnerGeneraciones.getValue() <= 0) spinnerGeneraciones.setValue(1);
         });
@@ -238,27 +418,136 @@ public class lifeSimGUI {
         panelBotones.add(labelGeneraciones);
         panelBotones.add(spinnerGeneraciones);
 
+        JLabel labelEscenario = new JLabel("Escenario Inicial");
+        String[] opcionesEscenarios = new String[]{"A", "B", "C", "D", "Personalizado"};
+        comboBoxEscenarios = new JComboBox<>(opcionesEscenarios);
+        comboBoxEscenarios.addItemListener(itemEvent -> {
 
-        // Añadimos el label y el selector del estado inicial
-        /*JLabel labelEstadoInicial = new JLabel("Estado inicial");
-        String[] opcionesEstadoInicial = new String[]{"Aleatorio", "Islas", "Cañones Planeadores"};
-        comboBoxEstadoInicial = new JComboBox(opcionesEstadoInicial);
-        panelBotones.add(labelEstadoInicial);
-        panelBotones.add(comboBoxEstadoInicial);*/
+            // Es un escenario => parámetros por defecto y no se puede editar
+            if (comboBoxEscenarios.getSelectedIndex() < 4){
+
+                // Desactivamos los spinners
+                desactivarSpinnersParametros();
+
+                // Ponemos los parametros en oscuro
+                lifeSim.ParametrosEscenario parametrosEscenario = lifeSim.ParametrosEscenario.ESCENARIOS_INICIALES[comboBoxEscenarios.getSelectedIndex()];
+                spinnerPs.setValue(parametrosEscenario.Ps);
+                spinnerPm.setValue(parametrosEscenario.Pm);
+                spinnerPp.setValue(parametrosEscenario.Pp);
+                spinnerNP.setValue(parametrosEscenario.NP);
+
+                // Ponemos la grilla normal
+                cambiaEstadoReticula(false);
+
+                // Eliminamos los puntos que se hayan podido seleccionar de la retícula
+                setPuntosReticula.clear();
+
+                // Creamos un objeto sim para obtener las posiciones de los primeros puntos
+                sim = new lifeSim((int)spinnerGeneraciones.getValue(), comboBoxEscenarios.getSelectedIndex());
+                panelReticula.repaint();
+            }
+            else {
+
+                // Activamos los spinners
+                activarSpinnersParametros();
+
+                // Ponemos la grilla para elegir
+                cambiaEstadoReticula(true);
+            }
+        });
+
+        // Añadimos el label y el selector de escenario
+        panelBotones.add(labelEscenario);
+        panelBotones.add(comboBoxEscenarios);
+
+        // Change listener para sólo permitir valores [0,1]
+        ChangeListener changeListenerParamsDecimales = changeEvent -> {
+
+            JSpinner objetivo = (JSpinner) changeEvent.getSource();
+            Double valor = (Double) objetivo.getValue();
+
+            if (valor < 0) objetivo.setValue(0.0);
+            else if (valor > 1) objetivo.setValue(1.0);
+        };
+
+        JLabel labelPs = new JLabel("Parámetro Ps");
+        labelPs.setBorder(new EmptyBorder(10, 0, 0, 0));
+        SpinnerNumberModel plantillaSpinner = new SpinnerNumberModel(0.5d, 0.0d, 1.0d, 0.01d);
+        spinnerPs = new JSpinner(plantillaSpinner);
+        JSpinner.NumberEditor editor = new JSpinner.NumberEditor(spinnerPs, "#,##0.00");
+        spinnerPs.setEditor(editor);
+        spinnerPs.setValue(1.0);
+        spinnerPs.addChangeListener(changeListenerParamsDecimales);
+
+        // Añadimos el label y spinner del parámetro Ps
+        panelBotones.add(labelPs);
+        panelBotones.add(spinnerPs);
+
+        JLabel labelPm = new JLabel("Parámetro Pm");
+        labelPm.setBorder(new EmptyBorder(10, 0, 0, 0));
+        // Modifica el spinner para valores con 2 decimales
+        SpinnerNumberModel plantillaSpinner2 = new SpinnerNumberModel(0.5d, 0.0d, 1.0d, 0.01d);
+        spinnerPm = new JSpinner(plantillaSpinner2);
+        JSpinner.NumberEditor editor2 = new JSpinner.NumberEditor(spinnerPm, "#,##0.00");
+        spinnerPm.setEditor(editor2);
+        spinnerPm.setValue(0.2);
+        spinnerPm.addChangeListener(changeListenerParamsDecimales);
+
+        // Añadimos el label y spinner del parámetro Pm
+        panelBotones.add(labelPm);
+        panelBotones.add(spinnerPm);
+
+        JLabel labelPp = new JLabel("Parámetro Pp");
+        labelPp.setBorder(new EmptyBorder(10, 0, 0, 0));
+        SpinnerNumberModel plantillaSpinner3 = new SpinnerNumberModel(0.5d, 0.0d, 1.0d, 0.01d);
+        spinnerPp = new JSpinner(plantillaSpinner3);
+        JSpinner.NumberEditor editor3 = new JSpinner.NumberEditor(spinnerPp, "#,##0.00");
+        spinnerPp.setEditor(editor3);
+        spinnerPp.setValue(0.25);
+        spinnerPp.addChangeListener(changeListenerParamsDecimales);
+
+        // Añadimos el label y spinner del parámetro Pp
+        panelBotones.add(labelPp);
+        panelBotones.add(spinnerPp);
+
+        JLabel labelNP = new JLabel("Parámetro NP");
+        labelNP.setBorder(new EmptyBorder(10, 0, 0, 0));
+        spinnerNP = new JSpinner();
+        spinnerNP.setValue(1);
+        spinnerNP.addChangeListener(changeEvent -> {
+            if ((Integer) spinnerNP.getValue() < 1) spinnerNP.setValue(1);
+        });
+
+        // Añadimos el label y spinner del parámetro Pp
+        panelBotones.add(labelNP);
+        panelBotones.add(spinnerNP);
 
         // Añadimos el boton para comenzar la simulacion
         botonSimular = new JButton("Simular");
         botonSimular.addActionListener(e -> {
 
             if (!simulando){
-                int nGeneraciones = (int) spinnerGeneraciones.getValue();
-                //lifeSim.ESTADO_INICIAL estadoInicial = lifeSim.ESTADO_INICIAL.values()[comboBoxEstadoInicial.getSelectedIndex()];
 
-                sim = new lifeSim(1000, false, 1, 0.2, 0.25, 2);
-                //sim = new lifeSim(nGeneraciones);
+                // Es un escenario personalizado
+                if (comboBoxEscenarios.getSelectedIndex() > 3){
+                    double Ps = (double) spinnerPs.getValue();
+                    double Pm = (double) spinnerPm.getValue();
+                    double Pp = (double) spinnerPp.getValue();
+                    int NP = (int) spinnerNP.getValue();
+                    lifeSim.ParametrosEscenario parametrosEscenario = new lifeSim.ParametrosEscenario(Ps, Pm, Pp, NP, setPuntosReticula);
+                    sim = new lifeSim((int) spinnerGeneraciones.getValue(), parametrosEscenario);
+                }
+                // Es un escenario preestablecido
+                else {
+                    sim = new lifeSim((int) spinnerGeneraciones.getValue(), comboBoxEscenarios.getSelectedIndex());
+                }
+
+                // Cambiamos la retícula para mostrar la simulación
+                cambiaEstadoReticula(false);
 
                 simulando = true;
 
+                // Comenzamos el proceso de evolucionado
                 evolucionar();
             }
         });
@@ -284,9 +573,29 @@ public class lifeSimGUI {
         panelBotones.add(new JLabel(""));
         panelBotones.add(botonReset);
 
-        panelOpciones.add(panelBotones);
 
+        // Desactivamos los parametros
+        desactivarSpinnersParametros();
+
+        // Añadimos el panel al principal
+        panelOpciones.add(panelBotones);
     }
+
+    private void activarSpinnersParametros(){
+        spinnerPs.setEnabled(true);
+        spinnerPm.setEnabled(true);
+        spinnerPp.setEnabled(true);
+        spinnerNP.setEnabled(true);
+    }
+
+    private void desactivarSpinnersParametros(){
+        spinnerPs.setEnabled(false);
+        spinnerPm.setEnabled(false);
+        spinnerPp.setEnabled(false);
+        spinnerNP.setEnabled(false);
+    }
+
+
     private void anadePanelOpciones(){
 
         // Frame donde meter la reticula
@@ -296,7 +605,7 @@ public class lifeSimGUI {
 
         // Panel donde meteremos la gráfica
         panelOpciones = new JPanel();
-        panelOpciones.setLayout(new GridLayout(2, 1));
+        panelOpciones.setLayout(new GridLayout(1, 1));
         panelOpciones.setBorder(new EmptyBorder(10, 20, 10 ,20));
         panelOpciones.setMinimumSize(new Dimension(ANCHO_OPCIONES, ALTO_OPCIONES));
         frameOpciones.add(panelOpciones);
@@ -366,7 +675,7 @@ public class lifeSimGUI {
 
     public void comprobacionesPrevias(){
         String OS = System.getProperty("os.name", "unknown").toLowerCase(Locale.ROOT);
-        ALTO_BARRA_VENTANA = OS.equals("win") ? 37 : 28;
+        ALTO_BARRA_VENTANA = OS.equals("win") ? 37 : OS.contains("nux") ? 37 : 28;
     }
 
     public static void main(String[] args) {
