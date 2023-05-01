@@ -34,7 +34,7 @@ public class lifeSimGUI {
     private static int ALTO_BARRA_VENTANA = -1;
 
     // Cada conjunto de X*X celdas se corresponderán con la evolución de una sola célula
-    public static int FACTOR_CELULAS = 5;   // 3
+    public static int FACTOR_CELULAS = 4;   // 3
 
     public static final double DESPLAZAMIENTO_GRAFICA = 0.3;
 
@@ -259,7 +259,6 @@ public class lifeSimGUI {
 
         JLabel labelGeneraciones = new JLabel("Numero de generaciones");
         labelGeneraciones.setBorder(new EmptyBorder(10, 0, 0, 0));
-
         spinnerGeneraciones = new JSpinner();
         spinnerGeneraciones.setValue(600);
         spinnerGeneraciones.addChangeListener((event) -> {
@@ -270,8 +269,6 @@ public class lifeSimGUI {
         panelBotones.add(labelGeneraciones);
         panelBotones.add(spinnerGeneraciones);
 
-        // Para margen
-        panelBotones.add(new JLabel(""));
 
         // Añadimos el label y el selector del estado inicial
         /*JLabel labelEstadoInicial = new JLabel("Estado inicial");
@@ -279,9 +276,6 @@ public class lifeSimGUI {
         comboBoxEstadoInicial = new JComboBox(opcionesEstadoInicial);
         panelBotones.add(labelEstadoInicial);
         panelBotones.add(comboBoxEstadoInicial);*/
-
-        // Para margen
-        panelBotones.add(new JLabel(""));
 
         // Añadimos el boton para comenzar la simulacion
         botonSimular = new JButton("Simular");
@@ -294,18 +288,33 @@ public class lifeSimGUI {
                 //sim = new lifeSim(estadoInicial, nGeneraciones);
                 sim = new lifeSim(nGeneraciones);
 
-                botonSimular.setText("Parar");
-
                 simulando = true;
 
                 evolucionar();
             }
-            else {
-                simulando = false;
-            }
         });
 
+        // Para margen
+        panelBotones.add(new JLabel(""));
         panelBotones.add(botonSimular);
+
+        // Añadimos el boton para comenzar la simulacion
+        JButton botonReset = new JButton("Reset");
+        botonReset.addActionListener(e -> {
+            simulando = false;
+
+            timer.stop();
+
+            sim = null;
+            simulando = false;
+            panelReticula.repaint();
+            panelGraficaPoblacion.repaint();
+        });
+
+        // Para margen
+        panelBotones.add(new JLabel(""));
+        panelBotones.add(botonReset);
+
         panelOpciones.add(panelBotones);
 
     }
@@ -352,9 +361,6 @@ public class lifeSimGUI {
             }
             // Dejamos simulación final
             else if (sim.haTerminadoEvolucion()){
-
-                // Habilitamos de nuevo el boton para simular
-                botonSimular.setText("Simular");
                 timer.stop();
 
                 // Reiniciamos la retícula
@@ -365,7 +371,6 @@ public class lifeSimGUI {
             else {
 
                 // Habilitamos de nuevo el boton para simular
-                botonSimular.setText("Simular");
                 timer.stop();
 
                 // Reiniciamos la retícula
