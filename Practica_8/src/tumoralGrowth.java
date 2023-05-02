@@ -1,7 +1,7 @@
 import java.awt.*;
 import java.util.HashSet;
 
-public class lifeSim {
+public class tumoralGrowth {
 
 
     // Tensor con los valores de la generación nueva/vieja (alterna)
@@ -21,7 +21,10 @@ public class lifeSim {
     private double Ps, Pm, Pp;
     private int PH = 0, NP;
 
-    private static int N_CELULAS = lifeSimGUI.TAMANIO_RETICULA / lifeSimGUI.FACTOR_CELULAS;
+    private int[] historialCelulas = null;
+    private int cuentaCelulas = 0;
+
+    private static int N_CELULAS = tumoralGrowthGUI.TAMANIO_RETICULA / tumoralGrowthGUI.FACTOR_CELULAS;
 
     public static class ParametrosEscenario {
 
@@ -49,7 +52,7 @@ public class lifeSim {
 
         private static ParametrosEscenario[] getEscenariosIniciales(){
 
-            int n_celulas = lifeSimGUI.TAMANIO_RETICULA / lifeSimGUI.FACTOR_CELULAS;
+            int n_celulas = tumoralGrowthGUI.TAMANIO_RETICULA / tumoralGrowthGUI.FACTOR_CELULAS;
             int centro = (n_celulas-1) / 2;
 
             ParametrosEscenario escenarioA = new ParametrosEscenario(1.0, 0.2, 0.25, 1);
@@ -79,13 +82,13 @@ public class lifeSim {
         xGenerador_Randu = seed;
     }
 
-    public lifeSim(int numGeneraciones, int escenario){
+    public tumoralGrowth(int numGeneraciones, int escenario){
 
         ParametrosEscenario parametrosEscenario = ParametrosEscenario.ESCENARIOS_INICIALES[escenario];
         init(numGeneraciones, parametrosEscenario);
     }
 
-    public lifeSim(int numGeneraciones, ParametrosEscenario parametrosEscenario){
+    public tumoralGrowth(int numGeneraciones, ParametrosEscenario parametrosEscenario){
         init(numGeneraciones, parametrosEscenario);
     }
 
@@ -97,6 +100,7 @@ public class lifeSim {
         this.Pm = parametrosEscenario.Pm;
         this.Pp = parametrosEscenario.Pp;
         this.NP = parametrosEscenario.NP;
+        this.historialCelulas = new int[numGeneraciones];
 
         // Inicializamos la generación actual
         this.generaciones = new byte[2][N_CELULAS][N_CELULAS];
@@ -113,8 +117,11 @@ public class lifeSim {
     private void inicializaCancerEscenario(ParametrosEscenario parametrosEscenario){
 
         for (Point punto : parametrosEscenario.celulasIniciales){
+            cuentaCelulas++;
             this.generaciones[p][punto.x][punto.y] = 1;
         }
+
+        this.historialCelulas[nGeneracionActual] = cuentaCelulas;
     }
 
     /**
@@ -123,10 +130,8 @@ public class lifeSim {
      */
     public void evolucionVonNeumann(){
 
-        int n = lifeSimGUI.TAMANIO_RETICULA / lifeSimGUI.FACTOR_CELULAS;
-
-        for (int x = 0; x < n ; x ++) {
-            for (int y = 0; y < n ; y ++) {
+        for (int x = 0; x < N_CELULAS ; x ++) {
+            for (int y = 0; y < N_CELULAS ; y ++) {
 
                 // Comprobamos si la célula está viva
                 if (generaciones[p][x][y] == 1){
@@ -135,6 +140,7 @@ public class lifeSim {
 
                     // La célula muere
                     if (rr >= Ps){
+                        cuentaCelulas--;
                         generaciones[q][x][y] = 0;
                     }
 
@@ -149,20 +155,20 @@ public class lifeSim {
 
                             // Intentaremos proliferar
                             if (PH >= NP) {
-                                boolean prolifero = intentarProliferacion(x, y, n, rr);
+                                boolean prolifero = intentarProliferacion(x, y, N_CELULAS, rr);
 
                                 // No ha proliferado
-                                if (!prolifero) ramaMigracion(x, y, n, rr);
+                                if (!prolifero) ramaMigracion(x, y, N_CELULAS, rr);
 
                                     // TODO ¿?
                                 else PH = 0;
                             }
                             // No podemos "intentar proliferar"
-                            else ramaMigracion(x, y, n, rr);
+                            else ramaMigracion(x, y, N_CELULAS, rr);
                         }
 
                         // No podemos aumentar el conteo de proliferacion (PH+1)
-                        else ramaMigracion(x, y, n, rr);
+                        else ramaMigracion(x, y, N_CELULAS, rr);
                     }
                 }
             }
@@ -237,7 +243,10 @@ public class lifeSim {
         }
 
         // Proliferamos la célula en la dirección escogida
-        generaciones[q][direccionX][direccionY] = 1;
+        if (proliferado){
+            cuentaCelulas++;
+            generaciones[q][direccionX][direccionY] = 1;
+        }
 
         // Si se ha proliferado
         return proliferado;
@@ -280,26 +289,45 @@ public class lifeSim {
         int direccionX = x;
         int direccionY = y;
 
+        boolean migra = false;
+
         // Comprobamos si hay alguna posicion a la que proliferar
         for (int i=0; i<rangos.length-1; i++){
             if (rr >= rangos[i] && rr <= rangos[i+1]){
+                migra = true;
                 direccionX = direccionesX[i];
                 direccionY = direccionesY[i];
             }
         }
 
-        // Migramos la célula en la dirección escogida
-        generaciones[q][direccionX][direccionY] = 1;
-        generaciones[q][x][y] = 0;
+        if (migra){
+            // Migramos la célula en la dirección escogida
+            generaciones[q][direccionX][direccionY] = 1;
+            generaciones[q][x][y] = 0;
+        }
     }
 
     public void evoluciona(){
 
         if (nGeneracionActual != 0){
             evolucionVonNeumann();
+
+            // Contamos las celulas de la generacion actual
+            for (int i=0;i<N_CELULAS; i++){
+                for (int j=0;j<N_CELULAS; j++) {
+                    if (generaciones[p][i][j] == 1) {
+                        historialCelulas[nGeneracionActual]++;
+                    }
+                }
+            }
         }
 
         nGeneracionActual++;
+    }
+
+
+    public int[] getHistorialCelulas() {
+        return historialCelulas;
     }
 
     public byte[][] getActualGen() {
