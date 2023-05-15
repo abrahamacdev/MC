@@ -7,10 +7,12 @@ import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.util.*;
 
-public class lifeSimGUI {
+public class tumoralGrowthGUI {
 
     JFrame frameReticula;
     JFrame frameOpciones;
+
+    JFrame frameCurva;
 
     volatile JPanel panelReticula;
 
@@ -34,21 +36,23 @@ public class lifeSimGUI {
 
 
 
-    public static final int TAMANIO_RETICULA = 900; // 600
+    public static final int TAMANIO_RETICULA = 1024; // 600
     private static final int ALTO_OPCIONES = TAMANIO_RETICULA;
     private static final int ANCHO_OPCIONES = 350;
+
+    public static final int TAMANIO_CURVA = 500;
 
     private static int ALTO_BARRA_VENTANA = -1;
 
     // Cada conjunto de X*X celdas se corresponderán con la evolución de una sola célula
-    public static int FACTOR_CELULAS = 10;   // 4
+    public static int FACTOR_CELULAS = 8;   // 4
 
     public static final double DESPLAZAMIENTO_GRAFICA = 0.3;
 
 
     private static final int GENERACIONES_INICIALES = 600;
 
-    private volatile lifeSim sim = new lifeSim(GENERACIONES_INICIALES, 0);
+    private volatile tumoralGrowth sim = new tumoralGrowth(GENERACIONES_INICIALES, 0);
 
     private volatile Timer timer;
 
@@ -92,7 +96,7 @@ public class lifeSimGUI {
                         }
 
                         // Pintamos el cuadrado
-                        g.fillRect(i*FACTOR_CELULAS, j*FACTOR_CELULAS, i + FACTOR_CELULAS, j +FACTOR_CELULAS);
+                        g.fillRect(i*FACTOR_CELULAS, j*FACTOR_CELULAS, FACTOR_CELULAS, FACTOR_CELULAS);
                         //g.drawOval(i*FACTOR_CELULAS, j*FACTOR_CELULAS, FACTOR_CELULAS, FACTOR_CELULAS);
                         //g.drawRect(i*FACTOR_CELULAS, j*FACTOR_CELULAS, FACTOR_CELULAS, FACTOR_CELULAS);
                     }
@@ -155,8 +159,7 @@ public class lifeSimGUI {
         BufferedImage bufferedImage = new BufferedImage(panelGraficaPoblacion.getWidth(), panelGraficaPoblacion.getHeight(),BufferedImage.TYPE_INT_RGB);
         Graphics2D g = (Graphics2D) bufferedImage.getGraphics();
 
-        int minWidth = 5;
-        int minHeight = 5;
+        int margin = 10;
 
         int maxHeight = panelGraficaPoblacion.getHeight();
         int maxWidth = panelGraficaPoblacion.getWidth();
@@ -165,9 +168,19 @@ public class lifeSimGUI {
         g.setColor(Color.white);
         g.fillRect(0, 0, maxWidth, maxHeight);
 
-        // Evitamos que quede muy pegado
-        maxHeight -= minHeight;
-        maxWidth -= minWidth;
+        // Pintamos las guías
+        g.setStroke(new BasicStroke(2));
+        g.setColor(Color.darkGray);
+        g.drawLine(margin, maxHeight - margin, margin, margin);
+        g.drawLine(margin, maxHeight - margin, maxWidth - margin, maxHeight - margin);
+
+        int minX = margin;
+        int maxX = maxWidth - margin;
+        int minY = maxHeight - margin;
+        int maxY = margin;
+
+
+        int maxN = (int) (Math.pow((double) (TAMANIO_RETICULA / FACTOR_CELULAS), 2) * 0.5);
 
         g.setColor(Color.BLACK);
         g.setStroke(new BasicStroke(2));
@@ -179,29 +192,24 @@ public class lifeSimGUI {
 
                 // Suponemos que el número de células activas nunca va a ser superior a 1/6 del total
                 // de posibles células activas (nos ayuda a hacer zoom en la gráfica).
-                int maxPoblacionActiva =  1;
-                int maxGeneraciones = sim.getNumGeneraciones();
+                int[] celulasActivas = sim.getHistorialCelulas();
+                int numGeneraciones = sim.getNumGeneraciones();
 
-                /*float[] historicoA = sim.getMediaPoblacionA();
-                float[] historicoB = sim.getMediaPoblacionB();
-                float[] historicoC = sim.getMediaPoblacionC();
+                for (int i=1; i<celulasActivas.length; i++){
 
-                for (int i=0; i<sim.getnGeneracionActual(); i++){
+                    int actual = celulasActivas[i];
+                    int anterior = celulasActivas[i-1];
 
-                    // Grafica A
-                    pintaGeneracion(historicoA, coloresCurvas[0], i, g, maxHeight, maxWidth,
-                            minHeight, minWidth, maxGeneraciones);
+                    int previousX = minX + (i-1) * (maxWidth - 2*margin) / numGeneraciones;
+                    int previousY = minY - (anterior * (maxHeight - 2*margin) / maxN);
 
-                    // Grafica B
-                    pintaGeneracion(historicoB, coloresCurvas[1], i, g, maxHeight, maxWidth,
-                            minHeight, minWidth, maxGeneraciones);
+                    int posX = minX + i * (maxWidth - 2*margin) / numGeneraciones;
+                    int posY = minY - actual * (maxHeight - 2*margin) / maxN;
 
-                    // Grafica C
-                    pintaGeneracion(historicoC, coloresCurvas[2], i, g, maxHeight, maxWidth,
-                            minHeight, minWidth, maxGeneraciones);
+                    //System.out.println("Linea desde " + posX + ", " + posY + " hasta " +  nextX + ", " + nextY);
+                    g.drawLine(previousX, previousY, posX , posY);
+                    //System.exit(1);
                 }
-
-                 */
 
             }catch (Exception e){}
         }
@@ -359,14 +367,15 @@ public class lifeSimGUI {
         frameReticula.setVisible(true);
     }
 
-    private void gestionarClickReticula(){
-
-    }
-
     private void anadirGraficaPoblacion(){
 
+        // Frame donde meter la reticula
+        frameCurva = new JFrame("Curva de cinética temporal");
+        frameCurva.getContentPane().setLayout(new GridLayout(1,1));
+        frameCurva.setMinimumSize(new Dimension(TAMANIO_CURVA, TAMANIO_CURVA));
+
         JPanel panelTemp = new JPanel();
-        panelTemp.setBorder(new EmptyBorder(20, 0,0 ,0));
+        panelTemp.setBorder(new EmptyBorder(0, 0,0 ,0));
         panelTemp.setLayout(new GridLayout(1,1));
 
         panelGraficaPoblacion = new JPanel(){
@@ -377,7 +386,17 @@ public class lifeSimGUI {
         };
 
         panelTemp.add(panelGraficaPoblacion);
-        panelOpciones.add(panelTemp);
+        frameCurva.add(panelTemp);
+
+        // Calculamos la posicion del panel
+        AbstractMap.SimpleEntry<Integer, Integer> posicionPanel = posicionarPanelOpciones();
+
+        // Mostramos la reticula
+        frameCurva.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        frameCurva.setResizable(false);
+        frameCurva.setLocation(posicionPanel.getKey(), posicionPanel.getValue());
+        frameCurva.pack();
+        frameCurva.setVisible(true);
     }
 
     private AbstractMap.SimpleEntry<Integer, Integer> posicionarPanelOpciones(){
@@ -430,7 +449,7 @@ public class lifeSimGUI {
                 desactivarSpinnersParametros();
 
                 // Ponemos los parametros en oscuro
-                lifeSim.ParametrosEscenario parametrosEscenario = lifeSim.ParametrosEscenario.ESCENARIOS_INICIALES[comboBoxEscenarios.getSelectedIndex()];
+                tumoralGrowth.ParametrosEscenario parametrosEscenario = tumoralGrowth.ParametrosEscenario.ESCENARIOS_INICIALES[comboBoxEscenarios.getSelectedIndex()];
                 spinnerPs.setValue(parametrosEscenario.Ps);
                 spinnerPm.setValue(parametrosEscenario.Pm);
                 spinnerPp.setValue(parametrosEscenario.Pp);
@@ -443,7 +462,7 @@ public class lifeSimGUI {
                 setPuntosReticula.clear();
 
                 // Creamos un objeto sim para obtener las posiciones de los primeros puntos
-                sim = new lifeSim((int)spinnerGeneraciones.getValue(), comboBoxEscenarios.getSelectedIndex());
+                sim = new tumoralGrowth((int)spinnerGeneraciones.getValue(), comboBoxEscenarios.getSelectedIndex());
                 panelReticula.repaint();
             }
             else {
@@ -528,18 +547,21 @@ public class lifeSimGUI {
 
             if (!simulando){
 
+                // Eliminamos la curva de la poblacion
+                if (frameCurva != null) frameCurva.dispose();
+
                 // Es un escenario personalizado
                 if (comboBoxEscenarios.getSelectedIndex() > 3){
                     double Ps = (double) spinnerPs.getValue();
                     double Pm = (double) spinnerPm.getValue();
                     double Pp = (double) spinnerPp.getValue();
                     int NP = (int) spinnerNP.getValue();
-                    lifeSim.ParametrosEscenario parametrosEscenario = new lifeSim.ParametrosEscenario(Ps, Pm, Pp, NP, setPuntosReticula);
-                    sim = new lifeSim((int) spinnerGeneraciones.getValue(), parametrosEscenario);
+                    tumoralGrowth.ParametrosEscenario parametrosEscenario = new tumoralGrowth.ParametrosEscenario(Ps, Pm, Pp, NP, setPuntosReticula);
+                    sim = new tumoralGrowth((int) spinnerGeneraciones.getValue(), parametrosEscenario);
                 }
                 // Es un escenario preestablecido
                 else {
-                    sim = new lifeSim((int) spinnerGeneraciones.getValue(), comboBoxEscenarios.getSelectedIndex());
+                    sim = new tumoralGrowth((int) spinnerGeneraciones.getValue(), comboBoxEscenarios.getSelectedIndex());
                 }
 
                 // Cambiamos la retícula para mostrar la simulación
@@ -559,14 +581,19 @@ public class lifeSimGUI {
         // Añadimos el boton para comenzar la simulacion
         JButton botonReset = new JButton("Reset");
         botonReset.addActionListener(e -> {
-            simulando = false;
 
+            // Paramos la simulacion
             timer.stop();
-
             sim = null;
             simulando = false;
+
+            // Dejamos las gráficas en blanco
             panelReticula.repaint();
-            panelGraficaPoblacion.repaint();
+
+            // Eliminamos la curva de la poblacion
+            frameCurva.dispose();
+
+            if (comboBoxEscenarios.getSelectedIndex() > 3) cambiaEstadoReticula(true);
         });
 
         // Para margen
@@ -617,7 +644,7 @@ public class lifeSimGUI {
         anadirBotonesOpciones();
 
         // Añadimos la gráfica con la evolución de la población
-        anadirGraficaPoblacion();
+        //anadirGraficaPoblacion();
 
         // Mostramos la reticula
         frameOpciones.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -629,6 +656,9 @@ public class lifeSimGUI {
     }
 
     private void evolucionar(){
+
+        // Mostramos la grafica de la población
+        anadirGraficaPoblacion();
 
         // Cada 100ms pintará una nueva generación
         timer = new Timer(10, actionEvent -> {
@@ -679,7 +709,7 @@ public class lifeSimGUI {
     }
 
     public static void main(String[] args) {
-        new lifeSimGUI().crearVentana();
+        new tumoralGrowthGUI().crearVentana();
 
         /*lifeSim s = new lifeSim(10, true, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 1, 1);
         while (!s.haTerminadoEvolucion())s.evoluciona();*/
