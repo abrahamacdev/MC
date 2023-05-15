@@ -36,7 +36,7 @@ public class tumoralGrowthGUI {
 
 
 
-    public static final int TAMANIO_RETICULA = 800; // 600
+    public static final int TAMANIO_RETICULA = 1024; // 600
     private static final int ALTO_OPCIONES = TAMANIO_RETICULA;
     private static final int ANCHO_OPCIONES = 350;
 
@@ -45,12 +45,12 @@ public class tumoralGrowthGUI {
     private static int ALTO_BARRA_VENTANA = -1;
 
     // Cada conjunto de X*X celdas se corresponderán con la evolución de una sola célula
-    public static int FACTOR_CELULAS = 8;   // 4
+    public static int FACTOR_CELULAS = 4;   // 4
 
     public static final double DESPLAZAMIENTO_GRAFICA = 0.3;
 
 
-    private static final int GENERACIONES_INICIALES = 600;
+    private static final int GENERACIONES_INICIALES = 40;
 
     private volatile tumoralGrowth sim = new tumoralGrowth(GENERACIONES_INICIALES, 0);
 
@@ -83,8 +83,6 @@ public class tumoralGrowthGUI {
 
                 byte[][] gen = sim.getActualGen();
 
-                System.out.println(Arrays.deepToString(gen));
-
                 for (int i=0; i<n; i++){
                     for (int j = 0; j < n; j++) {
 
@@ -93,14 +91,12 @@ public class tumoralGrowthGUI {
                         // Establecemos el color
                         if (v == 1){
                             g.setColor(Color.black);
-                        }else {
-                            g.setColor(Color.white);
-                        }
 
-                        // Pintamos el cuadrado
-                        g.fillRect(i*FACTOR_CELULAS, j*FACTOR_CELULAS, FACTOR_CELULAS, FACTOR_CELULAS);
-                        //g.drawOval(i*FACTOR_CELULAS, j*FACTOR_CELULAS, FACTOR_CELULAS, FACTOR_CELULAS);
-                        //g.drawRect(i*FACTOR_CELULAS, j*FACTOR_CELULAS, FACTOR_CELULAS, FACTOR_CELULAS);
+                            // Pintamos el cuadrado
+                            g.fillRect(i*FACTOR_CELULAS, j*FACTOR_CELULAS, FACTOR_CELULAS, FACTOR_CELULAS);
+                            //g.drawOval(i*FACTOR_CELULAS, j*FACTOR_CELULAS, FACTOR_CELULAS, FACTOR_CELULAS);
+                            //g.drawRect(i*FACTOR_CELULAS, j*FACTOR_CELULAS, FACTOR_CELULAS, FACTOR_CELULAS);
+                        }
                     }
                 }
             }catch (Exception e){
@@ -182,7 +178,8 @@ public class tumoralGrowthGUI {
         int maxY = margin;
 
 
-        int maxN = (int) (Math.pow((double) (TAMANIO_RETICULA / FACTOR_CELULAS), 2) * 0.5);
+        //int maxN = (int) (Math.pow((double) (TAMANIO_RETICULA / FACTOR_CELULAS), 2) * 0.5);
+        int maxN = (int) (Math.pow((double) (TAMANIO_RETICULA / FACTOR_CELULAS), 2));
 
         g.setColor(Color.BLACK);
         g.setStroke(new BasicStroke(2));
@@ -215,8 +212,6 @@ public class tumoralGrowthGUI {
 
             }catch (Exception e){}
         }
-
-        System.out.println("Pintando poblacion "  + sim.getnGeneracionActual());
 
         graphics.drawImage(bufferedImage, 0, 0, panelGraficaPoblacion);
     }
