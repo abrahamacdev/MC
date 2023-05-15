@@ -1,15 +1,15 @@
 import java.awt.*;
-import java.util.Arrays;
 import java.util.HashSet;
 
-public class tumoralGrowth {
+public class lifeSim {
 
 
     // Tensor con los valores de la generación nueva/vieja (alterna)
-    private byte[][] generaciones;
+    private byte[][][] generaciones;
 
     // Ayuda a ir alternando generacion nueva/vieja en el tensor de arriba (#generaciones)
     // p sera la generación inicial -> actualizar matriz con q
+    private int p= 0, q=1;
 
 
     // Nº de generación actual
@@ -21,10 +21,7 @@ public class tumoralGrowth {
     private double Ps, Pm, Pp;
     private int PH = 0, NP;
 
-    private int[] historialCelulas = null;
-    private int cuentaCelulas = 0;
-
-    private static int N_CELULAS = tumoralGrowthGUI.TAMANIO_RETICULA / tumoralGrowthGUI.FACTOR_CELULAS;
+    private static int N_CELULAS = lifeSimGUI.TAMANIO_RETICULA / lifeSimGUI.FACTOR_CELULAS;
 
     public static class ParametrosEscenario {
 
@@ -52,7 +49,7 @@ public class tumoralGrowth {
 
         private static ParametrosEscenario[] getEscenariosIniciales(){
 
-            int n_celulas = tumoralGrowthGUI.TAMANIO_RETICULA / tumoralGrowthGUI.FACTOR_CELULAS;
+            int n_celulas = lifeSimGUI.TAMANIO_RETICULA / lifeSimGUI.FACTOR_CELULAS;
             int centro = (n_celulas-1) / 2;
 
             ParametrosEscenario escenarioA = new ParametrosEscenario(1.0, 0.2, 0.25, 1);
@@ -73,13 +70,6 @@ public class tumoralGrowth {
 
             return new ParametrosEscenario[]{escenarioA, escenarioB, escenarioC, escenarioD};
         }
-
-        @Override
-        public String toString() {
-            String msg = "Ps=" + Ps + ", Pm=" + Pm + ", Pp=" + Pp + ", NP=" + NP + "\n";
-            msg += celulasIniciales.toString();
-            return msg;
-        }
     }
 
     // Necesario para el generador aleatorio
@@ -89,13 +79,13 @@ public class tumoralGrowth {
         xGenerador_Randu = seed;
     }
 
-    public tumoralGrowth(int numGeneraciones, int escenario){
+    public lifeSim(int numGeneraciones, int escenario){
 
         ParametrosEscenario parametrosEscenario = ParametrosEscenario.ESCENARIOS_INICIALES[escenario];
         init(numGeneraciones, parametrosEscenario);
     }
 
-    public tumoralGrowth(int numGeneraciones, ParametrosEscenario parametrosEscenario){
+    public lifeSim(int numGeneraciones, ParametrosEscenario parametrosEscenario){
         init(numGeneraciones, parametrosEscenario);
     }
 
@@ -107,10 +97,9 @@ public class tumoralGrowth {
         this.Pm = parametrosEscenario.Pm;
         this.Pp = parametrosEscenario.Pp;
         this.NP = parametrosEscenario.NP;
-        this.historialCelulas = new int[numGeneraciones];
 
         // Inicializamos la generación actual
-        this.generaciones = new byte[N_CELULAS][N_CELULAS];
+        this.generaciones = new byte[2][N_CELULAS][N_CELULAS];
 
         // Colocamos las primeras células vivas en base a las plantillas
         inicializaCancerEscenario(parametrosEscenario);
@@ -123,13 +112,9 @@ public class tumoralGrowth {
 
     private void inicializaCancerEscenario(ParametrosEscenario parametrosEscenario){
 
-        int cuentaCelulas = 0;
         for (Point punto : parametrosEscenario.celulasIniciales){
-            cuentaCelulas++;
-            this.generaciones[punto.x][punto.y] = 1;
+            this.generaciones[p][punto.x][punto.y] = 1;
         }
-
-        this.historialCelulas[nGeneracionActual] = cuentaCelulas;
     }
 
     /**
@@ -138,33 +123,24 @@ public class tumoralGrowth {
      */
     public void evolucionVonNeumann(){
 
-        // COpiamos el estado del anterior
-        byte[][] temp = new byte[N_CELULAS][N_CELULAS];
-        /*for (int i=0; i<N_CELULAS; i++){
-            temp[i] = Arrays.copyOf(generaciones[i], N_CELULAS);
-        }*/
-        boolean fijarseViejo = true;
+        int n = lifeSimGUI.TAMANIO_RETICULA / lifeSimGUI.FACTOR_CELULAS;
 
-        for (int x = 0; x < N_CELULAS ; x ++) {
-            for (int y = 0; y < N_CELULAS ; y ++) {
-
-                boolean celulaViva = temp[x][y] == 1;
-
-                if (fijarseViejo) celulaViva = generaciones[x][y] == 1;
+        for (int x = 0; x < n ; x ++) {
+            for (int y = 0; y < n ; y ++) {
 
                 // Comprobamos si la célula está viva
-                if (celulaViva){
+                if (generaciones[p][x][y] == 1){
 
                     double rr = Math.random();
 
                     // La célula muere
-                    /*if (rr >= Ps){
-                        cuentaCelulas--;
+                    if (rr >= Ps){
                         generaciones[q][x][y] = 0;
-                    }*/
+                    }
 
                     // La célula sobrevive
-                    if (rr < Ps){
+                    else {
+
                         double rrp = Math.random();
 
                         // Aumentamos el conteo de proliferación (PH+1)
@@ -173,35 +149,28 @@ public class tumoralGrowth {
 
                             // Intentaremos proliferar
                             if (PH >= NP) {
-                                boolean prolifero = intentarProliferacion(x, y, N_CELULAS, rr, temp, fijarseViejo);
+                                boolean prolifero = intentarProliferacion(x, y, n, rr);
 
                                 // No ha proliferado
-                                if (!prolifero) ramaMigracion(x, y, N_CELULAS, rr, temp, fijarseViejo);
+                                if (!prolifero) ramaMigracion(x, y, n, rr);
 
-                                // TODO ¿?
+                                    // TODO ¿?
                                 else PH = 0;
                             }
                             // No podemos "intentar proliferar"
-                            else ramaMigracion(x, y, N_CELULAS, rr, temp, fijarseViejo);
+                            else ramaMigracion(x, y, n, rr);
                         }
 
                         // No podemos aumentar el conteo de proliferacion (PH+1)
-                        else ramaMigracion(x, y, N_CELULAS, rr, temp, fijarseViejo);
+                        else ramaMigracion(x, y, n, rr);
                     }
                 }
             }
         }
 
-        int contadorTemp = 0;
-        int contadorP = 0;
-        for (int x = 0; x < N_CELULAS ; x ++) {
-            for (int y = 0; y < N_CELULAS ; y ++) {
-                if (temp[x][y] == 1) contadorTemp++;
-                if (generaciones[x][y] == 1) contadorP++;
-            }
-        }
-
-        generaciones = temp;
+        // Alterna entre 0 y 1
+        p ^= 1;
+        q ^= 1;
     }
 
     /**
@@ -210,17 +179,13 @@ public class tumoralGrowth {
      * @param y
      * @param n
      */
-    private void ramaMigracion(int x, int y, int n, double rr, byte[][] temp, boolean fijarseViejo){
+    private void ramaMigracion(int x, int y, int n, double rr){
 
         double rrm = Math.random();
 
-        // Intentamos que migre
         if (rrm < Pm){
-            intentaMigrar(x, y, n, rr, temp, fijarseViejo);
+            intentaMigrar(x, y, n, rr);
         }
-
-        // Dejamos el valor que tuviese (quiescent)
-        else temp[x][y] = generaciones[x][y];
     }
 
     /**
@@ -231,7 +196,7 @@ public class tumoralGrowth {
      * @param n
      * @return
      */
-    private boolean intentarProliferacion(int x, int y, int n, double rr, byte[][] temp, boolean fijarseViejo){
+    private boolean intentarProliferacion(int x, int y, int n, double rr){
 
         // Calculamos las posiciones de la fila/columna anterior/siguiente
         int xAnterior = (x-1+n)%n;
@@ -241,19 +206,11 @@ public class tumoralGrowth {
         int ySiguiente = (y+1+n)%n;
 
         // Cogemos los valores de los vecinos
-        byte valorFilaAnterior = temp[x][yAnterior];
-        byte valorFilaSiguiente = temp[x][ySiguiente];
+        byte valorFilaAnterior = generaciones[p][xAnterior][y];
+        byte valorFilaSiguiente = generaciones[p][xSiguiente][y];
 
-        byte valorColumnaAnterior = temp[xAnterior][y];
-        byte valorColumnaSiguiente = temp[xSiguiente][y];
-
-
-        if (fijarseViejo){
-            valorFilaAnterior = generaciones[x][yAnterior];
-            valorFilaSiguiente = generaciones[x][ySiguiente];
-            valorColumnaAnterior = generaciones[xAnterior][y];
-            valorColumnaSiguiente = generaciones[xAnterior][y];
-        }
+        byte valorColumnaAnterior = generaciones[p][x][yAnterior];
+        byte valorColumnaSiguiente = generaciones[p][x][ySiguiente];
 
         // Calculamos las probabilidades
         double p1 = (float)(1-valorFilaAnterior) / (float)(4 - (valorFilaSiguiente + valorFilaAnterior + valorColumnaSiguiente + valorColumnaAnterior));
@@ -280,9 +237,7 @@ public class tumoralGrowth {
         }
 
         // Proliferamos la célula en la dirección escogida
-        if (proliferado){
-            temp[direccionX][direccionY] = 1;
-        }
+        generaciones[q][direccionX][direccionY] = 1;
 
         // Si se ha proliferado
         return proliferado;
@@ -296,7 +251,7 @@ public class tumoralGrowth {
      * @param n
      * @return
      */
-    private void intentaMigrar(int x, int y, int n, double rr, byte[][] temp, boolean fijarseViejo){
+    private void intentaMigrar(int x, int y, int n, double rr){
 
         // Calculamos las posiciones de la fila/columna anterior/siguiente
         int xAnterior = (x-1+n)%n;
@@ -306,77 +261,52 @@ public class tumoralGrowth {
         int ySiguiente = (y+1+n)%n;
 
         // Cogemos los valores de los vecinos
-        byte valorFilaAnterior = temp[x][yAnterior];
-        byte valorFilaSiguiente = temp[x][ySiguiente];
+        byte valorFilaAnterior = generaciones[p][xAnterior][y];
+        byte valorFilaSiguiente = generaciones[p][xSiguiente][y];
 
-        byte valorColumnaAnterior = temp[xAnterior][y];
-        byte valorColumnaSiguiente = temp[xSiguiente][y];
-
-        if (fijarseViejo){
-            valorFilaAnterior = generaciones[x][yAnterior];
-            valorFilaSiguiente = generaciones[x][ySiguiente];
-            valorColumnaAnterior = generaciones[xAnterior][y];
-            valorColumnaSiguiente = generaciones[xAnterior][y];
-        }
+        byte valorColumnaAnterior = generaciones[p][x][yAnterior];
+        byte valorColumnaSiguiente = generaciones[p][x][ySiguiente];
 
         // Calculamos las probabilidades
         double p1 = (float)(1-valorFilaAnterior) / (float)(4 - (valorFilaSiguiente + valorFilaAnterior + valorColumnaSiguiente + valorColumnaAnterior));
         double p2 = (float)(1-valorFilaSiguiente) / (float)(4 - (valorFilaSiguiente + valorFilaAnterior + valorColumnaSiguiente + valorColumnaAnterior));
         double p3 = (float)(1-valorColumnaAnterior) / (float)(4 - (valorFilaSiguiente + valorFilaAnterior + valorColumnaSiguiente + valorColumnaAnterior));
 
-        int[] direccionesX = new int[]{ x, x, xAnterior, xSiguiente };
-        int[] direccionesY = new int[]{ yAnterior, ySiguiente, y, y };
+        int[] direccionesX = new int[]{ xAnterior, xSiguiente, x, x };
+        int[] direccionesY = new int[]{ y, y, yAnterior, ySiguiente };
 
         double[] rangos = new double[]{0, p1, p1+p2, p1+p2+p3, 1};
 
         int direccionX = x;
         int direccionY = y;
 
-        boolean migra = false;
-
         // Comprobamos si hay alguna posicion a la que proliferar
         for (int i=0; i<rangos.length-1; i++){
             if (rr >= rangos[i] && rr <= rangos[i+1]){
-                migra = true;
                 direccionX = direccionesX[i];
                 direccionY = direccionesY[i];
-                break;
             }
         }
 
-        if (migra){
-
-            // Migramos la célula en la dirección escogida
-            temp[direccionX][direccionY] = 1;
-        }
+        // Migramos la célula en la dirección escogida
+        generaciones[q][direccionX][direccionY] = 1;
+        generaciones[q][x][y] = 0;
     }
 
     public void evoluciona(){
 
         if (nGeneracionActual != 0){
             evolucionVonNeumann();
-
-            // Contamos las celulas de la generacion actual
-            for (int i=0;i<N_CELULAS; i++){
-                for (int j=0;j<N_CELULAS; j++) {
-                    if (generaciones[i][j] == 1) {
-                        historialCelulas[nGeneracionActual]++;
-                    }
-                }
-            }
         }
 
         nGeneracionActual++;
     }
 
-
-    public int[] getHistorialCelulas() {
-        return historialCelulas;
-    }
-
     public byte[][] getActualGen() {
-        return generaciones;
+        return generaciones[p];
     }
+
+    public int getQ(){ return q; }
 
     public int getNumGeneraciones() {
         return numGeneraciones;
