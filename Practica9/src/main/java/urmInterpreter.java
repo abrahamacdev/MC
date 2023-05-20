@@ -7,18 +7,25 @@ import java.util.regex.Pattern;
 public class urmInterpreter {
 
     // Dispondremos de 8 registros
-    private int[] registros = new int[8];
+    private int[] registros;
+    private int[] registrosIniciales;
+
+    private boolean valido = true;
 
     private int indxInstActual = 0; // Siguiente instrucción a ejecutar
     private String[] instrucciones; // Almacena las instrucciones a ejecutar
     private ArrayList<String> traza = new ArrayList<>();    // Almacena la traza del programa
 
-    public urmInterpreter (String programa){
-        iniciar(programa);
+    public urmInterpreter (String programa, int[] registros){
+        iniciar(programa, registros);
     }
 
 
-    private void iniciar(String programa){
+
+    private void iniciar(String programa, int[] registros){
+
+        this.registros = registros;
+        this.registrosIniciales = Arrays.copyOf(registros, registros.length);
 
         // Tiene que haber al menos una instruccion
         if (programa.length() > 0){
@@ -33,6 +40,12 @@ public class urmInterpreter {
         }
     }
 
+    public void reset(){
+        indxInstActual = 0;
+        traza.clear();
+        registros = Arrays.copyOf(registrosIniciales, registrosIniciales.length);;
+    }
+
     public void interpretarSiguiente(){
 
         // El programa acaba cuando instActual = |programa| + 1
@@ -45,14 +58,13 @@ public class urmInterpreter {
                     .replaceAll("\\)", "")
                     .split(",");
 
-            System.out.println("Ejecutando " + instruccion + " con params: " + Arrays.toString(argumentos));
             ejecutarInstruccion(instruccion, argumentos);
-            System.out.println("Resultado => " + configuracionActual());
         }
     }
 
     public void interpretarTodo(){
         while (!ejecucionTerminada()){
+            System.out.println("Instruccion actual " + indxInstActual);
             interpretarSiguiente();
         }
     }
@@ -112,7 +124,19 @@ public class urmInterpreter {
 
 
 
+    public ArrayList<String> getTraza() {
+        return traza;
+    }
+
     public boolean ejecucionTerminada(){
         return indxInstActual >= instrucciones.length;
+    }
+
+    public boolean isValido() {
+        return valido;
+    }
+
+    public void setValido(boolean valido) {
+        this.valido = valido;
     }
 }

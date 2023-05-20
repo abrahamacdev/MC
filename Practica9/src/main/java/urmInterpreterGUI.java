@@ -1,17 +1,120 @@
 import javax.swing.*;
-import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
+import javax.swing.text.DefaultCaret;
+import javax.swing.text.NumberFormatter;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.io.*;
+import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class urmInterpreterGUI {
 
-    public static int ANCHO_VENTANA = 1400;
+    public static int ANCHO_VENTANA = 1700;
     public static int ALTO_VENTANA = 1000;
 
     JFrame frameVentana;
 
     ArrayList<JTextField> listadoRegistros = new ArrayList<>();
+    JTextArea textAreaPrograma;
+    JTextArea textAreaSalida;
+    JButton botonInterpretar;
+    JButton botonElegirFichero;
+    JButton botonInterpretarPaso;
+
+    final JFileChooser fc = new JFileChooser();
+
+
+    urmInterpreter urmInterpreter;
+
+    private void inicializarInterprete(){
+        urmInterpreter = new urmInterpreter(textAreaPrograma.getText(), obtenerValoresRegistros());
+        deshabilitarRegistros();
+        deshabilitarInputPrograma();
+    }
+
+    private void deshabilitarRegistros(){
+        for (JTextField textField : listadoRegistros){
+            textField.setEnabled(false);
+        }
+    }
+
+    private void deshabilitarBotonesInterpretacion(){
+        botonInterpretar.setEnabled(false);
+        botonInterpretarPaso.setEnabled(false);
+    }
+    private void habilitarBotonesInterpretacion(){
+        botonInterpretar.setEnabled(true);
+        botonInterpretarPaso.setEnabled(true);
+    }
+
+    private void deshabilitarInputPrograma(){
+        textAreaPrograma.setEditable(false);
+        botonElegirFichero.setEnabled(false);
+    }
+
+    private void habilitarInputPrograma(){
+        textAreaPrograma.setEditable(true);
+        botonElegirFichero.setEnabled(true);
+    }
+
+    private void cargarContenidoFichero(File file){
+
+        if (file.getName().endsWith(".urm") || file.getName().endsWith(".txt")){
+
+            try {
+
+                StringBuilder programa = new StringBuilder();
+
+                // Leemos el contenido del fichero
+                BufferedReader bufferedReader = new BufferedReader(new FileReader(file));
+                String line = bufferedReader.readLine();
+
+                while (line != null){
+                    programa.append(line).append("\n");
+                    line = bufferedReader.readLine();
+                }
+
+                // Escribimos el programa en el text area
+                textAreaPrograma.setText(programa.toString());
+
+                // Cerramos el fichero
+                bufferedReader.close();
+
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+
+
+    private void actualizarTrayectoria(){
+        if (urmInterpreter != null){
+            textAreaSalida.setText(String.join("\n", urmInterpreter.getTraza()));
+            textAreaSalida.setCaretPosition(0);
+        }
+    }
+
+    public int[] obtenerValoresRegistros(){
+
+        int[] registros = new int[listadoRegistros.size()];
+
+        for (int i=0; i<registros.length; i++){
+            JTextField target = listadoRegistros.get(i);
+
+            // Leemos el valor del JTextField
+            if (!target.getText().isEmpty()){
+                registros[i] = Integer.parseInt(target.getText());
+            }
+        }
+
+        return registros;
+    }
 
     public JPanel obtenerPanelBotonEntrada(){
 
@@ -20,8 +123,16 @@ public class urmInterpreterGUI {
         panelBotonEntradaPrograma.setLayout(new GridBagLayout());
 
         // Boton para elegir el fichero
-        JButton botonElegirFichero = new JButton("Leer de archivo");
+        botonElegirFichero = new JButton("Leer de archivo");
         botonElegirFichero.setPreferredSize(new Dimension(250,60));
+        botonElegirFichero.addActionListener(actionEvent -> {
+            int returnVal = fc.showOpenDialog(frameVentana);
+
+            if (returnVal == JFileChooser.APPROVE_OPTION) {
+                File file = fc.getSelectedFile();
+                cargarContenidoFichero(file);
+            }
+        });
 
         // Añadimos el boton al panel
         panelBotonEntradaPrograma.add(botonElegirFichero, new GridBagConstraints());
@@ -47,10 +158,10 @@ public class urmInterpreterGUI {
         gbc.gridx = 0;
 
         // JTextArea para escribir el programa
-        JTextArea areaTextoPrograma = new JTextArea();
-        JScrollPane scrollTextAreaPrograma = new JScrollPane (areaTextoPrograma,
+        textAreaPrograma = new JTextArea();
+        JScrollPane scrollTextAreaPrograma = new JScrollPane (textAreaPrograma,
                 JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        areaTextoPrograma.setFont(areaTextoPrograma.getFont().deriveFont(24f));
+        textAreaPrograma.setFont(textAreaPrograma.getFont().deriveFont(24f));
 
         // Restricciones para el JTextArea
         gbc.gridy = 0;
@@ -82,6 +193,21 @@ public class urmInterpreterGUI {
         JLabel labelRegistro = new JLabel("R" + (numero+1));
         labelRegistro.setBorder(new EmptyBorder(30,0,0,0));
         JTextField textFieldRegistro = new JTextField(10);
+        textFieldRegistro.setText("0");
+
+        textFieldRegistro.addKeyListener(new KeyAdapter() {
+            public void keyTyped(KeyEvent e) {
+                char c = e.getKeyChar();
+                if (!((c >= '0') && (c <= '9') ||
+                        (c == KeyEvent.VK_BACK_SPACE) ||
+                        (c == KeyEvent.VK_DELETE))) {
+                    e.consume();
+                }
+            }
+        });
+
+        // Guardamos el textfield
+        listadoRegistros.add(textFieldRegistro);
 
         // Añadimos el label y el input
         panelRegistro.add(labelRegistro);
@@ -106,14 +232,38 @@ public class urmInterpreterGUI {
     public JPanel obtenerPanelBotonesSimulacion(){
 
         JPanel panelBotonesSimulacion = new JPanel();
-        panelBotonesSimulacion.setLayout(new GridLayout(2, 1));
+        panelBotonesSimulacion.setLayout(new GridLayout(3, 1));
 
         // Panel con el boton "Interpretar"
         JPanel panelBotonInterpretar = new JPanel();
         panelBotonInterpretar.setLayout(new GridBagLayout());
 
-        JButton botonInterpretar = new JButton("Interpretar");
+        botonInterpretar = new JButton("Interpretar");
         botonInterpretar.setPreferredSize(new Dimension(250,60));
+        botonInterpretar.addActionListener(actionEvent -> {
+
+            // No hay nada
+            if (urmInterpreter == null){
+                // Interpretamos toodo el programa
+                inicializarInterprete();
+                urmInterpreter.interpretarTodo();
+                actualizarTrayectoria();
+
+                deshabilitarBotonesInterpretacion();
+            }
+
+            // Hay algo
+            else {
+
+                // No se ha terminado de ejecutar
+                if (!urmInterpreter.ejecucionTerminada()){
+                    urmInterpreter.interpretarTodo();
+                    actualizarTrayectoria();
+
+                    deshabilitarBotonesInterpretacion();
+                }
+            }
+        });
         panelBotonInterpretar.add(botonInterpretar, new GridBagConstraints());
 
         // Panel con el boton "Interpretar un paso"
@@ -121,13 +271,67 @@ public class urmInterpreterGUI {
         panelBotonInterpretarPaso.setLayout(new GridBagLayout());
         panelBotonInterpretarPaso.setBorder(new EmptyBorder(0,0,60,0));
 
-        JButton botonInterpretarPaso = new JButton("Interpretar un paso");
+        botonInterpretarPaso = new JButton("Interpretar un paso");
         botonInterpretarPaso.setPreferredSize(new Dimension(250,60));
+        botonInterpretarPaso.addActionListener(actionEvent -> {
+
+            // Había algo
+            if (urmInterpreter != null){
+
+                // Continuamos una ejecución
+                if (!urmInterpreter.ejecucionTerminada()){
+                    urmInterpreter.interpretarSiguiente();
+                    actualizarTrayectoria();
+                }
+            }
+
+            // No había nada ejecutándose, creamos una nueva instancia
+            else {
+                inicializarInterprete();
+                urmInterpreter.interpretarSiguiente();
+                actualizarTrayectoria();
+            }
+
+            // Ejecucion acabada. Hay que volver a pulsar reset
+            if (urmInterpreter.ejecucionTerminada()){
+                deshabilitarBotonesInterpretacion();
+            }
+        });
         panelBotonInterpretarPaso.add(botonInterpretarPaso, new GridBagConstraints());
+
+        // Panel con el boton "Reset"
+        JPanel panelBotonReset = new JPanel();
+        panelBotonReset.setLayout(new GridBagLayout());
+        panelBotonReset.setBorder(new EmptyBorder(0,0,60,0));
+
+        JButton botonReset = new JButton("Reset");
+        botonReset.setPreferredSize(new Dimension(250,60));
+        botonReset.addActionListener(actionEvent -> {
+
+            // Habilitamos los registros y los ponemos a 0
+            for (JTextField textField : listadoRegistros) {
+                textField.setEnabled(true);
+                textField.setText("0");
+            }
+
+            // Habilitamos los botones para ejecutar una simulacion
+            habilitarBotonesInterpretacion();
+
+            // Permitimos introducir instrucciones para un nuevo programa
+            habilitarInputPrograma();
+
+            // Limpiamos la traza
+            textAreaSalida.setText("");
+
+            // Eliminamos la instancia del interprete
+            urmInterpreter = null;
+        });
+        panelBotonReset.add(botonReset, new GridBagConstraints());
 
         // Añadimos los botones al panel principal
         panelBotonesSimulacion.add(panelBotonInterpretar);
         panelBotonesSimulacion.add(panelBotonInterpretarPaso);
+        panelBotonesSimulacion.add(panelBotonReset);
 
         return panelBotonesSimulacion;
     }
@@ -176,34 +380,19 @@ public class urmInterpreterGUI {
         JPanel panelSalida = new JPanel();
         panelSalida.setLayout(new GridLayout(1,1));
 
-        // TODO Colorear panel
-        panelSalida.setBackground(Color.ORANGE);
-
-        /*GridBagConstraints gbc = new GridBagConstraints();
-        gbc.fill = GridBagConstraints.BOTH;
-        gbc.anchor = GridBagConstraints.FIRST_LINE_START;
-        gbc.gridheight = 1;
-        gbc.gridwidth = 1;
-        gbc.gridx = 0;
+        // Establecemos los bordes
+        EmptyBorder border = new EmptyBorder(20, 10, 150, 10);
+        panelSalida.setBorder(border);
 
         // JTextArea para escribir el programa
-        JTextArea areaTextoPrograma = new JTextArea();
-
-        // Restricciones para el JTextArea
-        gbc.gridy = 0;
-        gbc.weighty = 0.75;
-        gbc.weightx = 1;
+        textAreaSalida = new JTextArea();
+        textAreaSalida.setEditable(false);
+        JScrollPane scrollTextAreaPrograma = new JScrollPane (textAreaSalida,
+                JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        textAreaSalida.setFont(textAreaSalida.getFont().deriveFont(16f));
 
         // Añadimos el JTextArea al panel
-        panelEntradaPrograma.add(areaTextoPrograma, gbc);
-
-        // Restricciones para boton con seleccion de archivo
-        gbc.gridy = 1;
-        gbc.weighty = 0.25;
-        gbc.weightx = 1;
-
-        // Añadimos el panel con el boton para elegir el archivo
-        anadirPanelArchivoPrograma(panelEntradaPrograma, gbc);*/
+        panelSalida.add(scrollTextAreaPrograma);
 
         // Añadimos toodo al frame principal
         frameVentana.add(panelSalida, gbcEntradaPrograma);
@@ -228,7 +417,7 @@ public class urmInterpreterGUI {
         gbc.gridy = 0;
         gbc.gridx = 0;
         gbc.weighty = 1;
-        gbc.weightx = 0.35;
+        gbc.weightx = 0.3;
 
         // Añadimos la parte para introducir el URM programa (panel lateral izquierdo)
         anadirEntradaPrograma(gbc);
@@ -237,7 +426,7 @@ public class urmInterpreterGUI {
         gbc.gridy = 0;
         gbc.gridx = 1;
         gbc.weighty = 1;
-        gbc.weightx = 0.35;
+        gbc.weightx = 0.25;
 
         // Añadimos el panel lateral derecho
         anadirRegistros(gbc);
@@ -246,7 +435,7 @@ public class urmInterpreterGUI {
         gbc.gridy = 0;
         gbc.gridx = 2;
         gbc.weighty = 1;
-        gbc.weightx = 0.3;
+        gbc.weightx = 0.45;
 
         // Añadimos el panel lateral derecho
         anadirSalida(gbc);
