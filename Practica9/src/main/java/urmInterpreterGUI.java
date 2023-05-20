@@ -1,16 +1,10 @@
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.text.DefaultCaret;
-import javax.swing.text.NumberFormatter;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.*;
-import java.text.NumberFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 public class urmInterpreterGUI {
 
@@ -25,6 +19,8 @@ public class urmInterpreterGUI {
     JButton botonInterpretar;
     JButton botonElegirFichero;
     JButton botonInterpretarPaso;
+
+    JLabel labelResultado;
 
     final JFileChooser fc = new JFileChooser();
 
@@ -248,6 +244,7 @@ public class urmInterpreterGUI {
                 inicializarInterprete();
                 urmInterpreter.interpretarTodo();
                 actualizarTrayectoria();
+                labelResultado.setText("y = " + urmInterpreter.getResultado());
 
                 deshabilitarBotonesInterpretacion();
             }
@@ -259,6 +256,7 @@ public class urmInterpreterGUI {
                 if (!urmInterpreter.ejecucionTerminada()){
                     urmInterpreter.interpretarTodo();
                     actualizarTrayectoria();
+                    labelResultado.setText("y = " + urmInterpreter.getResultado());
 
                     deshabilitarBotonesInterpretacion();
                 }
@@ -294,6 +292,8 @@ public class urmInterpreterGUI {
 
             // Ejecucion acabada. Hay que volver a pulsar reset
             if (urmInterpreter.ejecucionTerminada()){
+                labelResultado.setText("y =  " + urmInterpreter.getResultado());
+
                 deshabilitarBotonesInterpretacion();
             }
         });
@@ -325,6 +325,9 @@ public class urmInterpreterGUI {
 
             // Eliminamos la instancia del interprete
             urmInterpreter = null;
+
+            // Limpiamos el resultado
+            labelResultado.setText("");
         });
         panelBotonReset.add(botonReset, new GridBagConstraints());
 
@@ -378,21 +381,51 @@ public class urmInterpreterGUI {
     public void anadirSalida(GridBagConstraints gbcEntradaPrograma){
 
         JPanel panelSalida = new JPanel();
-        panelSalida.setLayout(new GridLayout(1,1));
+        panelSalida.setLayout(new GridBagLayout());
 
         // Establecemos los bordes
-        EmptyBorder border = new EmptyBorder(20, 10, 150, 10);
-        panelSalida.setBorder(border);
+        //EmptyBorder border = new EmptyBorder(20, 10, 100, 10);
+        //panelSalida.setBorder(border);
 
-        // JTextArea para escribir el programa
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.anchor = GridBagConstraints.FIRST_LINE_START;
+        gbc.gridheight = 1;
+        gbc.gridwidth = 1;
+        gbc.gridx = 0;
+        gbc.weightx = 1;
+
+        // Restricciones del JTextArea
+        gbc.gridy = 0;
+        gbc.weighty = 0.8;
+
+        // JTextArea para escribir la traza
+        JPanel panelTextAreaSalida = new JPanel();
+        panelTextAreaSalida.setLayout(new GridLayout());
         textAreaSalida = new JTextArea();
         textAreaSalida.setEditable(false);
         JScrollPane scrollTextAreaPrograma = new JScrollPane (textAreaSalida,
-                JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+                JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
+        scrollTextAreaPrograma.setPreferredSize(new Dimension(1,1));
         textAreaSalida.setFont(textAreaSalida.getFont().deriveFont(16f));
 
         // Añadimos el JTextArea al panel
-        panelSalida.add(scrollTextAreaPrograma);
+        panelTextAreaSalida.add(scrollTextAreaPrograma);
+        panelSalida.add(panelTextAreaSalida, gbc);
+
+        // JLabel para el resultado
+        JPanel panelLabelResultado = new JPanel();
+        panelLabelResultado.setLayout(new GridBagLayout());
+        labelResultado = new JLabel("");
+        labelResultado.setFont(textAreaSalida.getFont().deriveFont(24f));
+
+        // Restricciones del JLabel
+        gbc.gridy = 1;
+        gbc.weighty = 0.2;
+
+        // Añadimois el JLabel al panel
+        panelLabelResultado.add(labelResultado);
+        panelSalida.add(panelLabelResultado, gbc);
 
         // Añadimos toodo al frame principal
         frameVentana.add(panelSalida, gbcEntradaPrograma);

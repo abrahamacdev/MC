@@ -1,8 +1,5 @@
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class urmInterpreter {
 
@@ -130,6 +127,11 @@ public class urmInterpreter {
 
     public boolean ejecucionTerminada(){
         return indxInstActual >= instrucciones.length;
+    }
+
+    public int getResultado(){
+        if (ejecucionTerminada()) return registros[0];
+        return -1;
     }
 
     public boolean isValido() {
