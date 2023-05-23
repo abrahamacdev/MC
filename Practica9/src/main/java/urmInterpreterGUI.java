@@ -483,7 +483,6 @@ public class urmInterpreterGUI {
     }
 
     public static void main(String[] args) {
-
         urmInterpreterGUI urmInterpreterGUI = new urmInterpreterGUI();
         urmInterpreterGUI.crearVentana();
     }

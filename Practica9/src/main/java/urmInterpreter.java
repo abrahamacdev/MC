@@ -35,6 +35,9 @@ public class urmInterpreter {
             // Añadimos a la traza la siguiente instruccion a ejecutar
             traza.add(configuracionActual());
         }
+
+        // No hay instrucciones
+        else this.instrucciones = new String[0];
     }
 
     public void reset(){
@@ -46,7 +49,7 @@ public class urmInterpreter {
     public void interpretarSiguiente(){
 
         // El programa acaba cuando instActual = |programa| + 1
-        if (indxInstActual < instrucciones.length){
+        if (!ejecucionTerminada()){
 
             String actual = instrucciones[indxInstActual];
             String instruccion = actual.substring(0,1);
@@ -84,7 +87,7 @@ public class urmInterpreter {
             case "J":
                 // Rm == Rn => i
                 if (registros[Integer.parseInt(params[0])-1] == registros[Integer.parseInt(params[1])-1]){
-                    indxInstActual = Integer.parseInt(params[2]);
+                    indxInstActual = Integer.parseInt(params[2]) - 1;
                 }
                 // Rm != Rn => actual+1
                 else indxInstActual++;
@@ -102,7 +105,7 @@ public class urmInterpreter {
     }
 
     private String configuracionActual(){
-        StringBuilder conf = new StringBuilder("<" + indxInstActual + ", <");
+        StringBuilder conf = new StringBuilder("<" + (indxInstActual+1) + ", <");
 
         // Añadimos el estado
         for (int i=0; i< registros.length; i++){
@@ -126,7 +129,7 @@ public class urmInterpreter {
     }
 
     public boolean ejecucionTerminada(){
-        return indxInstActual >= instrucciones.length;
+        return indxInstActual < 0 || indxInstActual >= instrucciones.length;
     }
 
     public int getResultado(){
